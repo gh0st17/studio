@@ -1,0 +1,4 @@
+.vscode/
+studio/builds/
+studio/__debug**
+**.DS_Store
