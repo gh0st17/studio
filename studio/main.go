@@ -1,6 +1,7 @@
 package main
 
 import (
+	"studio/basic_types"
 	"studio/cli"
 	"studio/errtype"
 	"studio/params"
@@ -24,7 +25,7 @@ func main() {
 	}
 
 	studio := studio.Studio{}
-	if err = studio.Run(ui); err != nil {
+	if err = studio.Run(ui, &basic_types.SysAdmin{}); err != nil {
 		errtype.ErrorHandler(err)
 	}
 }

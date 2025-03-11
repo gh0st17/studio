@@ -65,27 +65,11 @@ func ErrArgument(err error) error {
 	}
 }
 
-// Возвращает ошибки при сжатии
-func ErrCompress(err error) error {
+// Возвращает ошибки при использовании БД
+func ErrDataBase(err error) error {
 	return &Error{
 		text: err.Error(),
 		code: 3,
-	}
-}
-
-// Возвращает ошибки при распаковке
-func ErrDecompress(err error) error {
-	return &Error{
-		text: err.Error(),
-		code: 4,
-	}
-}
-
-// Возвращает ошибки при проверке целостности
-func ErrIntegrity(err error) error {
-	return &Error{
-		text: err.Error(),
-		code: 5,
 	}
 }
 
