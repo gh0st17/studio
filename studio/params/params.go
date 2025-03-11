@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"studio/filesystem"
 )
 
 type InterfaceType uint
@@ -69,9 +70,9 @@ func ParseParams() (p *Params, err error) {
 	if p.DBPath == "" {
 		return nil, ErrMissingDBPath
 	}
-	// if !filesystem.Exsists(p.DBPath) {
-	// 	return nil, ErrDBNotExists
-	// }
+	if !filesystem.Exsists(p.DBPath) {
+		return nil, ErrDBNotExists
+	}
 	if err = p.checkInterfaceType(interfaceType); err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func ParseParams() (p *Params, err error) {
 	return p, nil
 }
 
-// Проверяет параметр типа компрессора
+// Проверяет параметр для типа интерфейса
 func (p *Params) checkInterfaceType(it string) error {
 	it = strings.ToLower(it)
 

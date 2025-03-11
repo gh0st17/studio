@@ -99,9 +99,9 @@ func BinaryRead(r io.Reader, data any) error {
 }
 
 func Exsists(path string) bool {
-	if _, err := os.Stat(path); os.IsExist(err) {
-		return true
-	} else {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
+	} else {
+		return true
 	}
 }
