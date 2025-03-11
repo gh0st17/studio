@@ -1,6 +1,7 @@
 package basic_types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -9,12 +10,13 @@ import (
 type AccessLevel uint
 
 const (
-	CUSTOMER AccessLevel = iota
+	CUSTOMER AccessLevel = iota + 1
 	OPERATOR
 	SYSADMIN
 )
 
 type Entity interface {
+	GetFirstLastName() string
 	GetAccessLevel() AccessLevel
 	GetId() uint
 }
@@ -23,6 +25,10 @@ type Customer struct {
 	Id         uint
 	First_name string
 	Last_name  string
+}
+
+func (c *Customer) GetFirstLastName() string {
+	return fmt.Sprint(c.First_name, " ", c.Last_name)
 }
 
 func (*Customer) GetAccessLevel() AccessLevel { return CUSTOMER }
@@ -34,10 +40,18 @@ type Operator struct {
 	Last_name  string
 }
 
+func (o *Operator) GetFirstLastName() string {
+	return fmt.Sprint(o.First_name, " ", o.Last_name)
+}
+
 func (*Operator) GetAccessLevel() AccessLevel { return OPERATOR }
 func (o Operator) GetId() uint                { return o.Id }
 
 type SysAdmin struct{}
+
+func (*SysAdmin) GetFirstLastName() string {
+	return "Системный администратор"
+}
 
 func (*SysAdmin) GetAccessLevel() AccessLevel { return SYSADMIN }
 func (s SysAdmin) GetId() uint                { return 0 }

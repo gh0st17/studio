@@ -13,22 +13,24 @@ func (w *Web) Run(ent basic_types.Entity) {
 	//fmt.Println("Запуск web-интерфейса...")
 }
 
-func (w *Web) Login() uint {
-
-	return 0
+func (w *Web) Login() string {
+	return ""
 }
 
 func (w *Web) Main() string {
-
 	return ""
 }
 
 func (w *Web) DisplayOrderStat() {
-	fmt.Println("Список stat заказов (web-интерфейс)")
+	fmt.Println("Статус заказов (web-интерфейс)")
 }
 
 func (w *Web) DisplayOrders() {
 	fmt.Println("Список заказов (web-интерфейс)")
+}
+
+func (w *Web) CancelOrder() {
+	fmt.Println("Отмена заказа (web-интерфейс)")
 }
 
 func (w *Web) CreateOrder() {
@@ -45,10 +47,6 @@ func (w *Web) ProcessOrder(id uint) {
 
 func (w *Web) ReleaseOrder(id uint) {
 	fmt.Printf("Выдача заказа %d через web-интерфейс\n", id)
-}
-
-func (w *Web) ShowMessage(msg string) {
-	fmt.Println("Сообщение:", msg)
 }
 
 func (w *Web) BackupDB() {

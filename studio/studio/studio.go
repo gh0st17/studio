@@ -3,6 +3,7 @@ package studio
 import (
 	bt "studio/basic_types"
 	db "studio/database"
+	"studio/errtype"
 	"studio/ui"
 )
 
@@ -16,38 +17,55 @@ type Studio struct {
 	models    []bt.Model
 }
 
-func New(ui ui.UI, ent bt.Entity) (_ *Studio, err error) {
+func New(ui ui.UI) (_ *Studio, err error) {
 	s := Studio{
-		ui:  ui,
-		ent: ent,
-	}
-
-	accLevel := ent.GetAccessLevel()
-
-	switch accLevel {
-	case bt.CUSTOMER:
-		if s.orders, err = s.sDB.FetchOrdersByCustId(ent.GetId()); err != nil {
-			return nil, err
-		}
-	case bt.OPERATOR:
-		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
-			return nil, err
-		}
-		if s.orders, err = s.sDB.FetchOrders(); err != nil {
-			return nil, err
-		}
-		if s.materials, err = s.sDB.FetchMaterials(); err != nil {
-			return nil, err
-		}
-		if s.models, err = s.sDB.FetchModels(); err != nil {
-			return nil, err
-		}
+		ui: ui,
 	}
 
 	return &s, nil
 }
 
-func (s *Studio) Run() error {
+func (s *Studio) initTables() (err error) {
+	accLevel := s.ent.GetAccessLevel()
+
+	switch accLevel {
+	case bt.CUSTOMER:
+		if s.orders, err = s.sDB.FetchOrdersByCustId(s.ent.GetId()); err != nil {
+			return err
+		}
+	case bt.OPERATOR:
+		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
+			return err
+		}
+		if s.orders, err = s.sDB.FetchOrders(); err != nil {
+			return err
+		}
+		if s.materials, err = s.sDB.FetchMaterials(); err != nil {
+			return err
+		}
+		if s.models, err = s.sDB.FetchModels(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Studio) Run(dbPath string) (err error) {
+	if err = s.sDB.LoadDB(dbPath); err != nil {
+		return err
+	}
+
+	login := s.ui.Login()
+	s.ent, err = s.sDB.Login(login)
+	if err != nil {
+		return err
+	}
+
+	if err = s.initTables(); err != nil {
+		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
+	}
+
 	s.ui.Run(s.ent)
 
 	for {
@@ -57,6 +75,8 @@ func (s *Studio) Run() error {
 			s.CreateOrder()
 		case "Просмотреть заказы":
 			s.DisplayOrders()
+		case "Отменить заказ":
+			s.CancelOrder()
 		case "Просмотреть статус заказов":
 			s.DisplayOrderStat()
 		case "Редактировать заказ":
@@ -68,6 +88,9 @@ func (s *Studio) Run() error {
 		case "Копирование БД":
 			s.BackupDB()
 		case "Выход":
+			if err = s.sDB.CloseDB(); err != nil {
+				return err
+			}
 			return nil
 		}
 	}
@@ -79,6 +102,10 @@ func (s *Studio) DisplayOrderStat() {
 
 func (s *Studio) DisplayOrders() {
 	s.ui.DisplayOrders()
+}
+
+func (s *Studio) CancelOrder() {
+	s.ui.CancelOrder()
 }
 
 func (s *Studio) CreateOrder() {

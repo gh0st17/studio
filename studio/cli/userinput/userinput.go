@@ -13,7 +13,7 @@ import (
 
 // Обрабатывает пользовательский ввод
 func Prompt(prompt string) (string, error) {
-	fmt.Print(prompt)
+	fmt.Printf("%s: ", prompt)
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Scan() {
 		return strings.TrimRight(scanner.Text(), "\r\n"), nil

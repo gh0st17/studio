@@ -1,7 +1,6 @@
 package main
 
 import (
-	"studio/basic_types"
 	"studio/cli"
 	"studio/errtype"
 	"studio/params"
@@ -24,8 +23,12 @@ func main() {
 		ui = &web.Web{}
 	}
 
-	studio := studio.Studio{}
-	if err = studio.Run(ui, &basic_types.SysAdmin{}); err != nil {
+	studio, err := studio.New(ui)
+	if err != nil {
+		errtype.ErrorHandler(err)
+	}
+
+	if err = studio.Run(p.DBPath); err != nil {
 		errtype.ErrorHandler(err)
 	}
 }

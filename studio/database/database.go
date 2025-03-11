@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	bt "studio/basic_types"
 	"studio/errtype"
@@ -10,7 +11,8 @@ import (
 )
 
 type StudioDB struct {
-	sDB *sql.DB
+	entity bt.Entity
+	sDB    *sql.DB
 }
 
 // Представляет критрии для подстановки в условие
@@ -21,13 +23,112 @@ type Criteria struct {
 	PostOperator string
 }
 
-func (s StudioDB) FetchCustomers() ([]bt.Customer, error) {
+// Загружает локальную базу данных из файла
+func (s *StudioDB) LoadDB(fileName string) error {
+	var err error
+	s.sDB, err = sql.Open("sqlite3", fileName)
+	if err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
+	}
+
+	return nil
+}
+
+// Закрывает базу данных
+func (s *StudioDB) CloseDB() error {
+	if err := s.sDB.Close(); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrCloseDB, err))
+	}
+
+	return nil
+}
+
+func (s StudioDB) Login(login string) (bt.Entity, error) {
 	rows, err := s.query(
-		"*", "customers", "first_name, last_name", []Criteria{},
+		"accLevel", "users", "login", []Criteria{{"login", "'" + login + "'", ""}},
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	var accLevel uint
+	if !rows.Next() {
+		return nil, errtype.ErrDataBase(
+			errtype.Join(errors.New("неправильный логин"), err),
+		)
+	} else {
+		if err = rows.Scan(&accLevel); err != nil {
+			return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
+		}
+	}
+
+	table := func() string {
+		switch bt.AccessLevel(accLevel) {
+		case bt.CUSTOMER:
+			return "customers"
+		case bt.OPERATOR:
+			return "operators"
+		default:
+			return ""
+		}
+	}()
+	rows.Close()
+
+	if table == "" {
+		return &bt.SysAdmin{}, nil
+	}
+
+	rows, err = s.query(
+		"id, first_name, last_name", table, "id", []Criteria{{"login", "'" + login + "'", ""}},
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var (
+		id         uint
+		first_name string
+		last_name  string
+		entity     bt.Entity
+	)
+
+	rows.Next()
+	if err = rows.Scan(&id, &first_name, &last_name); err != nil {
+		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
+	}
+
+	entity = func() bt.Entity {
+		switch bt.AccessLevel(accLevel) {
+		case bt.CUSTOMER:
+			return &bt.Customer{
+				Id:         id,
+				First_name: first_name,
+				Last_name:  last_name,
+			}
+		case bt.OPERATOR:
+			return &bt.Operator{
+				Id:         id,
+				First_name: first_name,
+				Last_name:  last_name,
+			}
+		default:
+			return nil
+		}
+	}()
+
+	return entity, nil
+}
+
+func (s StudioDB) FetchCustomers() ([]bt.Customer, error) {
+	rows, err := s.query(
+		"id, first_name, last_name", "customers",
+		"first_name, last_name", []Criteria{{"1", "1", ""}},
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	var (
 		id         uint
