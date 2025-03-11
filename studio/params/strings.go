@@ -21,7 +21,7 @@ const (
 	useExample = "--db <путь до архива> --type <тип интерфейса>"
 
 	dbPathDesc        = "Путь к директории для распаковки"
-	interfaceTypeDesc = "Тип компрессора: GZip, LZW, ZLib, Flate"
+	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
 	logDesc           = "Печатать логи"
 	helpDesc          = "Показать эту помощь"
 )

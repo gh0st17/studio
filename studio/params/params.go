@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"studio/filesystem"
 )
 
 type InterfaceType uint
@@ -49,31 +48,12 @@ func ParseParams() (p *Params, err error) {
 	flag.StringVar(&interfaceType, "type", "", interfaceTypeDesc)
 	flag.StringVar(&p.DBPath, "db", "", dbPathDesc)
 
-	var IType string
-	flag.StringVar(&IType, "c", "", IType)
-
 	logging := flag.Bool("log", false, logDesc)
 	version := flag.Bool("V", false, versionDesc)
 	help := flag.Bool("help", false, helpDesc)
 
 	flag.Parse()
 
-	if interfaceType == "" {
-		return nil, ErrMissingIType
-	}
-	if p.DBPath == "" {
-		return nil, ErrMissingDBPath
-	}
-	if !filesystem.Exsists(p.DBPath) {
-		return nil, ErrDBNotExists
-	}
-	if err = p.checkInterfaceType(interfaceType); err != nil {
-		return nil, err
-	}
-
-	if !*logging {
-		log.SetOutput(io.Discard)
-	}
 	if *version {
 		fmt.Print(versionText)
 		os.Exit(0)
@@ -81,6 +61,23 @@ func ParseParams() (p *Params, err error) {
 	if *help {
 		printHelp()
 		os.Exit(0)
+	}
+
+	if interfaceType == "" {
+		return nil, ErrMissingIType
+	}
+	if p.DBPath == "" {
+		return nil, ErrMissingDBPath
+	}
+	// if !filesystem.Exsists(p.DBPath) {
+	// 	return nil, ErrDBNotExists
+	// }
+	if err = p.checkInterfaceType(interfaceType); err != nil {
+		return nil, err
+	}
+
+	if !*logging {
+		log.SetOutput(io.Discard)
 	}
 
 	return p, nil
@@ -93,7 +90,7 @@ func (p *Params) checkInterfaceType(it string) error {
 	switch it {
 	case "cli":
 		p.IType = CLI
-	case "lzw":
+	case "web":
 		p.IType = Web
 	default:
 		return ErrUnknownIType
