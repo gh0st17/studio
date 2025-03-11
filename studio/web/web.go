@@ -14,7 +14,8 @@ func (w *Web) Run(ent basic_types.Entity) {
 }
 
 func (w *Web) Login() string {
-	return ""
+	panic("not implemented")
+	// return ""
 }
 
 func (w *Web) Main() string {
