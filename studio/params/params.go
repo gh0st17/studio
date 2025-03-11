@@ -25,7 +25,7 @@ const (
 )
 
 type Params struct {
-	It      InterfaceType // Тип интерфейса
+	IType   InterfaceType // Тип интерфейса
 	DBPath  string        // Путь к файлу базы данных
 	Logging bool          // Печать логов
 }
@@ -92,9 +92,9 @@ func (p *Params) checkInterfaceType(it string) error {
 
 	switch it {
 	case "cli":
-		p.It = CLI
+		p.IType = CLI
 	case "lzw":
-		p.It = Web
+		p.IType = Web
 	default:
 		return ErrUnknownIType
 	}
