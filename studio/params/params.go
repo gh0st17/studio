@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"studio/filesystem"
 )
 
 type InterfaceType uint
@@ -56,6 +57,19 @@ func ParseParams() (p *Params, err error) {
 	help := flag.Bool("help", false, helpDesc)
 
 	flag.Parse()
+
+	if interfaceType == "" {
+		return nil, ErrMissingIType
+	}
+	if p.DBPath == "" {
+		return nil, ErrMissingDBPath
+	}
+	if !filesystem.Exsists(p.DBPath) {
+		return nil, ErrDBNotExists
+	}
+	if err = p.checkInterfaceType(interfaceType); err != nil {
+		return nil, err
+	}
 
 	if !*logging {
 		log.SetOutput(io.Discard)

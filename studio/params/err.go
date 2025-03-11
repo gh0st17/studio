@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	ErrUnknownIType = fmt.Errorf("неизвестный тип интерфейса")
-	ErrMissingIType = fmt.Errorf("тип интерфейса не указан")
-	ErrDBPath       = fmt.Errorf("путь до файла базы данных не указан")
-	ErrDBExists     = fmt.Errorf("путь до файла базы данных не существует")
+	ErrUnknownIType  = fmt.Errorf("неизвестный тип интерфейса")
+	ErrMissingIType  = fmt.Errorf("тип интерфейса не указан")
+	ErrMissingDBPath = fmt.Errorf("путь до файла базы данных не указан")
+	ErrDBNotExists   = fmt.Errorf("путь до файла базы данных не существует")
 )

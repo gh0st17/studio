@@ -97,3 +97,11 @@ func BinaryWrite(w io.Writer, data any) error {
 func BinaryRead(r io.Reader, data any) error {
 	return binary.Read(r, binary.LittleEndian, data)
 }
+
+func Exsists(path string) bool {
+	if _, err := os.Stat(path); os.IsExist(err) {
+		return true
+	} else {
+		return false
+	}
+}
