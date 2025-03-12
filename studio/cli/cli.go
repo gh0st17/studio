@@ -39,7 +39,7 @@ func (c *CLI) Login() string {
 	)
 
 	for {
-		login, err = userinput.Prompt("Введите Ваш логин")
+		login, err = userinput.PromptString("Введите Ваш логин")
 		if err == nil {
 			break
 		}
@@ -60,17 +60,22 @@ func (c *CLI) Main() (choice string) {
 	return choice
 }
 
-func (c *CLI) DisplayOrderStat() {
-	fmt.Println("Статус заказов (консольный интерфейс)")
+func (c *CLI) DisplayOrders(o []bt.Order) {
+	fmt.Println(Orders(o))
 	pause()
 }
 
-func (c *CLI) DisplayOrders() {
-	fmt.Println("Список заказов (консольный интерфейс)")
+func (c *CLI) SelectOrderId() (uint, error) {
+	return userinput.PromptUint("Выберите id заказа")
+}
+
+func (c *CLI) DisplayOrderItems(oI []bt.OrderItem) {
+	fmt.Println("id oid mid unit_price")
+	fmt.Println(OrderItems(oI))
 	pause()
 }
 
-func (c *CLI) CancelOrder() {
+func (c *CLI) CancelOrder(id uint) {
 	fmt.Println("Отмена заказа (консольный интерфейс)")
 	pause()
 }
@@ -103,8 +108,9 @@ func (c *CLI) BackupDB() {
 func customerOptions() []string {
 	return []string{
 		"Создать заказ",
+		"Просмотреть заказы",
+		"Просмотреть содержимое заказa",
 		"Отменить заказ",
-		"Просмотреть статус заказов",
 		"Выход",
 	}
 }
@@ -112,8 +118,9 @@ func customerOptions() []string {
 func operatorOptions() []string {
 	return []string{
 		"Просмотреть заказы",
+		"Просмотреть содержимое заказa",
 		"Редактировать заказ",
-		"Исполнение заказа",
+		"Выполнить заказ",
 		"Выдача заказа",
 		"Выход",
 	}
@@ -149,4 +156,32 @@ func pause() {
 	} else {
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
+}
+
+type Orders []bt.Order
+
+func (orders Orders) String() (s string) {
+	s = fmt.Sprintln("id cid eid status total_price created released")
+
+	for _, o := range orders {
+		s += fmt.Sprintln(
+			o.Id, o.C_id, o.E_id, o.Status, o.TotalPrice, o.CreateDate, o.ReleaseDate,
+		)
+	}
+	s += fmt.Sprintln()
+
+	return s
+}
+
+type OrderItems []bt.OrderItem
+
+func (ois OrderItems) String() (s string) {
+	for _, oi := range ois {
+		s += fmt.Sprintln(
+			oi.Id, oi.O_id, oi.Model, oi.UnitPrice,
+		)
+	}
+	s += fmt.Sprintln()
+
+	return s
 }

@@ -55,6 +55,10 @@ const (
 	Canceled
 )
 
+func (stat OrderStatus) String() string {
+	return [...]string{"Ожидает", "На исполнении", "Выдан", "Отменен"}[stat]
+}
+
 type Order struct {
 	Id          uint
 	C_id        uint

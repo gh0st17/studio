@@ -85,16 +85,21 @@ func (s *Studio) Run(dbPath string) (err error) {
 			s.CreateOrder()
 		case "Просмотреть заказы":
 			s.DisplayOrders()
+		case "Просмотреть содержимое заказa":
+			id, _ := s.ui.SelectOrderId()
+			s.DisplayOrderItems(id)
 		case "Отменить заказ":
-			s.CancelOrder()
-		case "Просмотреть статус заказов":
-			s.DisplayOrderStat()
+			id, _ := s.ui.SelectOrderId()
+			s.CancelOrder(id)
 		case "Редактировать заказ":
-			s.EditOrder(1)
+			id, _ := s.ui.SelectOrderId()
+			s.EditOrder(id)
 		case "Исполнение заказа":
-			s.ProcessOrder(1)
+			id, _ := s.ui.SelectOrderId()
+			s.ProcessOrder(id)
 		case "Выдача заказа":
-			s.ReleaseOrder(1)
+			id, _ := s.ui.SelectOrderId()
+			s.ReleaseOrder(id)
 		case "Копирование БД":
 			s.BackupDB()
 		case "Выход":
@@ -106,16 +111,16 @@ func (s *Studio) Run(dbPath string) (err error) {
 	}
 }
 
-func (s *Studio) DisplayOrderStat() {
-	s.ui.DisplayOrderStat()
-}
-
 func (s *Studio) DisplayOrders() {
-	s.ui.DisplayOrders()
+	s.ui.DisplayOrders(s.orders)
 }
 
-func (s *Studio) CancelOrder() {
-	s.ui.CancelOrder()
+func (s *Studio) DisplayOrderItems(id uint) {
+	s.ui.DisplayOrderItems(s.orderItems[id])
+}
+
+func (s *Studio) CancelOrder(id uint) {
+	s.ui.CancelOrder(id)
 }
 
 func (s *Studio) CreateOrder() {
