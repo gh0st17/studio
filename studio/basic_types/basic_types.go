@@ -3,8 +3,6 @@ package basic_types
 import (
 	"fmt"
 	"time"
-
-	"github.com/shopspring/decimal"
 )
 
 type AccessLevel uint
@@ -34,27 +32,19 @@ func (c *Customer) GetFirstLastName() string {
 func (*Customer) GetAccessLevel() AccessLevel { return CUSTOMER }
 func (c Customer) GetId() uint                { return c.Id }
 
-type Operator struct {
+type Employee struct {
 	Id         uint
 	First_name string
 	Last_name  string
+	JobId      uint
 }
 
-func (o *Operator) GetFirstLastName() string {
+func (o *Employee) GetFirstLastName() string {
 	return fmt.Sprint(o.First_name, " ", o.Last_name)
 }
 
-func (*Operator) GetAccessLevel() AccessLevel { return OPERATOR }
-func (o Operator) GetId() uint                { return o.Id }
-
-type SysAdmin struct{}
-
-func (*SysAdmin) GetFirstLastName() string {
-	return "Системный администратор"
-}
-
-func (*SysAdmin) GetAccessLevel() AccessLevel { return SYSADMIN }
-func (s SysAdmin) GetId() uint                { return 0 }
+func (*Employee) GetAccessLevel() AccessLevel { return OPERATOR }
+func (o Employee) GetId() uint                { return o.Id }
 
 type OrderStatus uint
 
@@ -67,25 +57,47 @@ const (
 
 type Order struct {
 	Id          uint
-	Customer_id uint
-	Operator_id uint
+	C_id        uint
+	E_id        uint
 	Status      OrderStatus
-	Items       []Model
-	Total_price decimal.Decimal
+	TotalPrice  float64
 	CreateDate  time.Time
 	ReleaseDate time.Time
+}
+
+type RawOrder struct {
+	Id          uint
+	C_id        uint
+	E_id        uint
+	Status      OrderStatus
+	TotalPrice  float64
+	CreateDate  int64
+	ReleaseDate int64
+}
+
+type OrderItem struct {
+	Id        uint
+	O_id      uint
+	Model     []Model
+	UnitPrice float64
+}
+
+type RawOrderItem struct {
+	Id        uint
+	O_id      uint
+	Model     uint
+	UnitPrice float64
 }
 
 type Material struct {
 	Id    uint
 	Title string
-	Price decimal.Decimal
+	Price float64
 }
 
 type Model struct {
-	Id    uint
-	Title string
-
-	// Матриалы и их длина
-	Materials map[Material]decimal.Decimal
+	Id        uint
+	Title     string
+	Materials map[uint]Material
+	MatLeng   map[uint]float64
 }

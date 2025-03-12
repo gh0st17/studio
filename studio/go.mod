@@ -2,11 +2,8 @@ module studio
 
 go 1.24.1
 
-require github.com/shopspring/decimal v1.4.0
-
-require github.com/mattn/go-sqlite3 v1.14.24 // indirect
-
 require (
+  github.com/mattn/go-sqlite3 v1.14.24 // direct
 	github.com/AlecAivazis/survey/v2 v2.3.7 // direct
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect

@@ -8,13 +8,14 @@ import (
 )
 
 type Studio struct {
-	ui        ui.UI
-	ent       bt.Entity
-	sDB       db.StudioDB
-	customers []bt.Customer
-	orders    []bt.Order
-	materials []bt.Material
-	models    []bt.Model
+	ui         ui.UI
+	ent        bt.Entity
+	sDB        db.StudioDB
+	customers  []bt.Customer
+	orders     []bt.Order
+	orderItems map[uint][]bt.OrderItem
+	materials  []bt.Material
+	models     []bt.Model
 }
 
 func New(ui ui.UI) (_ *Studio, err error) {
@@ -30,7 +31,7 @@ func (s *Studio) initTables() (err error) {
 
 	switch accLevel {
 	case bt.CUSTOMER:
-		if s.orders, err = s.sDB.FetchOrdersByCustId(s.ent.GetId()); err != nil {
+		if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
 			return err
 		}
 	case bt.OPERATOR:
@@ -40,10 +41,17 @@ func (s *Studio) initTables() (err error) {
 		if s.orders, err = s.sDB.FetchOrders(); err != nil {
 			return err
 		}
+	}
+
+	switch accLevel {
+	case bt.CUSTOMER, bt.OPERATOR:
 		if s.materials, err = s.sDB.FetchMaterials(); err != nil {
 			return err
 		}
 		if s.models, err = s.sDB.FetchModels(); err != nil {
+			return err
+		}
+		if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
 			return err
 		}
 	}
@@ -62,8 +70,10 @@ func (s *Studio) Run(dbPath string) (err error) {
 		return err
 	}
 
-	if err = s.initTables(); err != nil {
-		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
+	if s.ent.GetAccessLevel() != 3 {
+		if err = s.initTables(); err != nil {
+			return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
+		}
 	}
 
 	s.ui.Run(s.ent)
