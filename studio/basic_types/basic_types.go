@@ -41,13 +41,13 @@ type Employee struct {
 	Login     string
 }
 
-func (o *Employee) GetFirstLastName() string {
-	return fmt.Sprint(o.FirstName, " ", o.LastName)
+func (e *Employee) GetFirstLastName() string {
+	return fmt.Sprint(e.FirstName, " ", e.LastName)
 }
 
 func (e *Employee) GetAccessLevel() AccessLevel { return AccessLevel(e.JobId) }
 
-func (o Employee) GetId() uint { return o.Id }
+func (e Employee) GetId() uint { return e.Id }
 
 type OrderStatus uint
 
