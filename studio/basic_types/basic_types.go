@@ -20,31 +20,32 @@ type Entity interface {
 }
 
 type Customer struct {
-	Id         uint
-	First_name string
-	Last_name  string
+	Id        uint
+	FirstName string
+	LastName  string
 }
 
 func (c *Customer) GetFirstLastName() string {
-	return fmt.Sprint(c.First_name, " ", c.Last_name)
+	return fmt.Sprint(c.FirstName, " ", c.LastName)
 }
 
 func (*Customer) GetAccessLevel() AccessLevel { return CUSTOMER }
 func (c Customer) GetId() uint                { return c.Id }
 
 type Employee struct {
-	Id         uint
-	First_name string
-	Last_name  string
-	JobId      uint
+	Id        uint
+	FirstName string
+	LastName  string
+	JobId     uint
 }
 
 func (o *Employee) GetFirstLastName() string {
-	return fmt.Sprint(o.First_name, " ", o.Last_name)
+	return fmt.Sprint(o.FirstName, " ", o.LastName)
 }
 
-func (*Employee) GetAccessLevel() AccessLevel { return OPERATOR }
-func (o Employee) GetId() uint                { return o.Id }
+func (e *Employee) GetAccessLevel() AccessLevel { return AccessLevel(e.JobId) }
+
+func (o Employee) GetId() uint { return o.Id }
 
 type OrderStatus uint
 

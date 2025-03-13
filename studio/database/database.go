@@ -58,7 +58,7 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	var qp queryParams
 
 	qp = queryParams{
-		"accLevel", "users", "login",
+		"accLevel", "users", "",
 		[]whereClause{{"login", "=", "'" + login + "'", ""}},
 	}
 
@@ -66,6 +66,7 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var accLevel uint
 	if !rows.Next() {
@@ -78,58 +79,53 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 		}
 	}
 
-	table := func() string {
-		if bt.AccessLevel(accLevel) == bt.CUSTOMER {
-			return "customers"
-		} else {
-			return "employees"
-		}
-	}()
-	rows.Close()
+	if bt.AccessLevel(accLevel) == bt.CUSTOMER {
+		return db.loginCustomer(login)
+	} else {
+		return db.loginEmployee(login)
+	}
+}
 
-	qp = queryParams{
-		"id, first_name, last_name", table, "id",
+func (db *StudioDB) loginCustomer(login string) (bt.Entity, error) {
+	cols, table := "id, first_name, last_name", "customers"
+	qp := queryParams{
+		cols, table, "",
 		[]whereClause{{"login", "=", "'" + login + "'", ""}},
 	}
-	rows, err = db.query(qp)
+	rows, err := db.query(qp)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var (
-		id         uint
-		first_name string
-		last_name  string
-		entity     bt.Entity
-	)
-
+	ent := &bt.Customer{}
 	rows.Next()
-	if err = rows.Scan(&id, &first_name, &last_name); err != nil {
+	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName); err != nil {
 		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 	}
 
-	entity = func() bt.Entity {
-		var ent bt.Entity
-		switch bt.AccessLevel(accLevel) {
-		case bt.CUSTOMER:
-			ent = &bt.Customer{
-				Id:         id,
-				First_name: first_name,
-				Last_name:  last_name,
-			}
-		case bt.OPERATOR, bt.SYSADMIN:
-			ent = &bt.Employee{
-				Id:         id,
-				First_name: first_name,
-				Last_name:  last_name,
-			}
-		}
+	return ent, nil
+}
 
-		return ent
-	}()
+func (db *StudioDB) loginEmployee(login string) (bt.Entity, error) {
+	cols, table := "id, first_name, last_name, job_id", "employees"
+	qp := queryParams{
+		cols, table, "",
+		[]whereClause{{"login", "=", "'" + login + "'", ""}},
+	}
+	rows, err := db.query(qp)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-	return entity, nil
+	ent := &bt.Employee{}
+	rows.Next()
+	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName, &ent.JobId); err != nil {
+		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
+	}
+
+	return ent, nil
 }
 
 func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
@@ -149,7 +145,7 @@ func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 
 func (db *StudioDB) FetchOrdersByCid(cid uint) ([]bt.Order, error) {
 	qp := queryParams{
-		"*", "order_items", "id",
+		"*", "orders", "id",
 		[]whereClause{{"c_id", "=", fmt.Sprintf("%d", cid), ""}},
 	}
 

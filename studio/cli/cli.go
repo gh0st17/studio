@@ -8,9 +8,12 @@ import (
 	"runtime"
 	bt "studio/basic_types"
 	"studio/cli/userinput"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 )
+
+const dateFormat string = "02.01.2006 15:04:05"
 
 type CLI struct {
 	ent bt.Entity
@@ -61,7 +64,7 @@ func (c *CLI) Main() (choice string) {
 }
 
 func (c *CLI) DisplayOrders(o []bt.Order) {
-	fmt.Println(Orders(o))
+	fmt.Print(Orders(o))
 	pause()
 }
 
@@ -70,8 +73,7 @@ func (c *CLI) SelectOrderId() (uint, error) {
 }
 
 func (c *CLI) DisplayOrderItems(oI []bt.OrderItem) {
-	fmt.Println("id oid mid unit_price")
-	fmt.Println(OrderItems(oI))
+	fmt.Print(OrderItems(oI))
 	pause()
 }
 
@@ -161,27 +163,59 @@ func pause() {
 type Orders []bt.Order
 
 func (orders Orders) String() (s string) {
-	s = fmt.Sprintln("id cid eid status total_price created released")
+	var (
+		ctime, rtime string
+	)
+	s = fmt.Sprintf(
+		"  # Статус заказа %9s %19s %19s\n",
+		"Сумма", "Создан", "Выдан",
+	)
 
 	for _, o := range orders {
-		s += fmt.Sprintln(
-			o.Id, o.C_id, o.E_id, o.Status, o.TotalPrice, o.CreateDate, o.ReleaseDate,
+		ctime = o.CreateDate.Format(dateFormat)
+
+		if o.ReleaseDate != time.Unix(0, 0) {
+			rtime = o.ReleaseDate.Format(dateFormat)
+		} else {
+			rtime = "---"
+		}
+
+		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s\n",
+			o.Id, o.Status, o.TotalPrice, ctime, rtime,
 		)
 	}
-	s += fmt.Sprintln()
 
 	return s
 }
 
-type OrderItems []bt.OrderItem
+type (
+	OrderItems []bt.OrderItem
+	Model      []bt.Model
+)
 
 func (ois OrderItems) String() (s string) {
+	var sum float64 = 0.0
+
 	for _, oi := range ois {
-		s += fmt.Sprintln(
-			oi.Id, oi.O_id, oi.Model, oi.UnitPrice,
-		)
+		s += Model(oi.Model).String()
+		s += fmt.Sprintf("Cтоимость изготовления %2.2f\n\n", oi.UnitPrice)
+		sum += oi.UnitPrice
 	}
-	s += fmt.Sprintln()
+	s += fmt.Sprintln("Общая стоимость заказа: ", sum)
+
+	return s
+}
+
+func (mod Model) String() (s string) {
+	for _, m := range mod {
+		s += fmt.Sprintf("%s:\n", m.Title)
+
+		for _, mat := range m.Materials {
+			s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
+				mat.Title, mat.Price, m.MatLeng[m.Id],
+			)
+		}
+	}
 
 	return s
 }
