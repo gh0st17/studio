@@ -15,11 +15,14 @@ func (w *Web) Run(ent bt.Entity) {
 
 func (w *Web) Login() string {
 	panic("not implemented")
-	// return ""
 }
 
 func (w *Web) Main() string {
 	return ""
+}
+
+func (w *Web) Registration(login string) (customer bt.Customer) {
+	panic("not implemented")
 }
 
 func (w *Web) DisplayOrders(orders []bt.Order) {

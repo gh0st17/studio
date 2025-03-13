@@ -51,6 +51,14 @@ func (c *CLI) Login() string {
 	return login
 }
 
+func (c *CLI) Registration(login string) (customer bt.Customer) {
+	customer.FirstName, _ = userinput.PromptString("Введите свое имя")
+	customer.LastName, _ = userinput.PromptString("Введите свою фамилию")
+	customer.Login = login
+
+	return customer
+}
+
 func (c *CLI) Main() (choice string) {
 	clearScreen()
 	prompt := &survey.Select{

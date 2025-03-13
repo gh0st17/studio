@@ -59,14 +59,21 @@ func (s *Studio) initTables() (err error) {
 	return nil
 }
 
-func (s *Studio) Run(dbPath string) (err error) {
+func (s *Studio) Run(dbPath string, reg bool) (err error) {
 	if err = s.sDB.LoadDB(dbPath); err != nil {
 		return err
 	}
 
 	login := s.ui.Login()
-	s.ent, err = s.sDB.Login(login)
-	if err != nil {
+
+	if reg {
+		customer := s.ui.Registration(login)
+		if err = s.sDB.Registration(customer); err != nil {
+			return err
+		}
+	}
+
+	if s.ent, err = s.sDB.Login(login); err != nil {
 		return err
 	}
 

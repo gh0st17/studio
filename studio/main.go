@@ -28,7 +28,7 @@ func main() {
 		errtype.ErrorHandler(err)
 	}
 
-	if err = studio.Run(p.DBPath); err != nil {
+	if err = studio.Run(p.DBPath, p.Reg); err != nil {
 		errtype.ErrorHandler(err)
 	}
 }

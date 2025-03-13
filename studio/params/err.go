@@ -9,4 +9,5 @@ var (
 	ErrMissingIType  = fmt.Errorf("тип интерфейса не указан")
 	ErrMissingDBPath = fmt.Errorf("путь до файла базы данных не указан")
 	ErrDBNotExists   = fmt.Errorf("путь до файла базы данных не существует")
+	ErrRegCLI        = fmt.Errorf("регистрация посредством агрументов доступна только для CLI")
 )

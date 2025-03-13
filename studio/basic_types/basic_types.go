@@ -23,6 +23,7 @@ type Customer struct {
 	Id        uint
 	FirstName string
 	LastName  string
+	Login     string
 }
 
 func (c *Customer) GetFirstLastName() string {
@@ -37,6 +38,7 @@ type Employee struct {
 	FirstName string
 	LastName  string
 	JobId     uint
+	Login     string
 }
 
 func (o *Employee) GetFirstLastName() string {

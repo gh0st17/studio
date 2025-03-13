@@ -22,6 +22,7 @@ const (
 
 	dbPathDesc        = "Путь к директории для распаковки"
 	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
+	registrationDesc  = "Регистрация нового клиента для CLI"
 	logDesc           = "Печатать логи"
 	helpDesc          = "Показать эту помощь"
 )

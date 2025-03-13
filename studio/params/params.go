@@ -28,6 +28,7 @@ type Params struct {
 	IType   InterfaceType // Тип интерфейса
 	DBPath  string        // Путь к файлу базы данных
 	Logging bool          // Печать логов
+	Reg     bool          // Регистрация нового клиента
 }
 
 // Печатает справку
@@ -48,6 +49,7 @@ func ParseParams() (p *Params, err error) {
 	var interfaceType string
 	flag.StringVar(&interfaceType, "type", "", interfaceTypeDesc)
 	flag.StringVar(&p.DBPath, "db", "", dbPathDesc)
+	flag.BoolVar(&p.Reg, "registration", false, registrationDesc)
 
 	logging := flag.Bool("log", false, logDesc)
 	version := flag.Bool("V", false, versionDesc)
@@ -73,8 +75,12 @@ func ParseParams() (p *Params, err error) {
 	if !filesystem.Exsists(p.DBPath) {
 		return nil, ErrDBNotExists
 	}
+
 	if err = p.checkInterfaceType(interfaceType); err != nil {
 		return nil, err
+	}
+	if p.IType != CLI && p.Reg {
+		return nil, ErrRegCLI
 	}
 
 	if !*logging {
