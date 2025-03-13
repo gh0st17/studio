@@ -8,13 +8,14 @@ import (
 )
 
 type Studio struct {
-	ui        ui.UI
-	ent       bt.Entity
-	sDB       db.StudioDB
-	customers []bt.Customer
-	orders    []bt.Order
-	materials []bt.Material
-	models    []bt.Model
+	ui         ui.UI
+	ent        bt.Entity
+	sDB        db.StudioDB
+	customers  []bt.Customer
+	orders     []bt.Order
+	orderItems map[uint][]bt.OrderItem
+	materials  []bt.Material
+	models     []bt.Model
 }
 
 func New(ui ui.UI) (_ *Studio, err error) {
@@ -30,7 +31,7 @@ func (s *Studio) initTables() (err error) {
 
 	switch accLevel {
 	case bt.CUSTOMER:
-		if s.orders, err = s.sDB.FetchOrdersByCustId(s.ent.GetId()); err != nil {
+		if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
 			return err
 		}
 	case bt.OPERATOR:
@@ -40,10 +41,17 @@ func (s *Studio) initTables() (err error) {
 		if s.orders, err = s.sDB.FetchOrders(); err != nil {
 			return err
 		}
+	}
+
+	switch accLevel {
+	case bt.CUSTOMER, bt.OPERATOR:
 		if s.materials, err = s.sDB.FetchMaterials(); err != nil {
 			return err
 		}
 		if s.models, err = s.sDB.FetchModels(); err != nil {
+			return err
+		}
+		if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
 			return err
 		}
 	}
@@ -51,19 +59,28 @@ func (s *Studio) initTables() (err error) {
 	return nil
 }
 
-func (s *Studio) Run(dbPath string) (err error) {
+func (s *Studio) Run(dbPath string, reg bool) (err error) {
 	if err = s.sDB.LoadDB(dbPath); err != nil {
 		return err
 	}
 
 	login := s.ui.Login()
-	s.ent, err = s.sDB.Login(login)
-	if err != nil {
+
+	if reg {
+		customer := s.ui.Registration(login)
+		if err = s.sDB.Registration(customer); err != nil {
+			return err
+		}
+	}
+
+	if s.ent, err = s.sDB.Login(login); err != nil {
 		return err
 	}
 
-	if err = s.initTables(); err != nil {
-		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
+	if s.ent.GetAccessLevel() != 3 {
+		if err = s.initTables(); err != nil {
+			return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
+		}
 	}
 
 	s.ui.Run(s.ent)
@@ -75,16 +92,21 @@ func (s *Studio) Run(dbPath string) (err error) {
 			s.CreateOrder()
 		case "Просмотреть заказы":
 			s.DisplayOrders()
+		case "Просмотреть содержимое заказa":
+			id, _ := s.ui.SelectOrderId()
+			s.DisplayOrderItems(id)
 		case "Отменить заказ":
-			s.CancelOrder()
-		case "Просмотреть статус заказов":
-			s.DisplayOrderStat()
+			id, _ := s.ui.SelectOrderId()
+			s.CancelOrder(id)
 		case "Редактировать заказ":
-			s.EditOrder(1)
+			id, _ := s.ui.SelectOrderId()
+			s.EditOrder(id)
 		case "Исполнение заказа":
-			s.ProcessOrder(1)
+			id, _ := s.ui.SelectOrderId()
+			s.ProcessOrder(id)
 		case "Выдача заказа":
-			s.ReleaseOrder(1)
+			id, _ := s.ui.SelectOrderId()
+			s.ReleaseOrder(id)
 		case "Копирование БД":
 			s.BackupDB()
 		case "Выход":
@@ -96,16 +118,16 @@ func (s *Studio) Run(dbPath string) (err error) {
 	}
 }
 
-func (s *Studio) DisplayOrderStat() {
-	s.ui.DisplayOrderStat()
-}
-
 func (s *Studio) DisplayOrders() {
-	s.ui.DisplayOrders()
+	s.ui.DisplayOrders(s.orders)
 }
 
-func (s *Studio) CancelOrder() {
-	s.ui.CancelOrder()
+func (s *Studio) DisplayOrderItems(id uint) {
+	s.ui.DisplayOrderItems(s.orderItems[id])
+}
+
+func (s *Studio) CancelOrder(id uint) {
+	s.ui.CancelOrder(id)
 }
 
 func (s *Studio) CreateOrder() {

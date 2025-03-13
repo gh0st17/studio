@@ -4,7 +4,7 @@ package params
 
 const (
 	versionDesc = "Печать номера версии и выход"
-	versionText = "studio 1.0.0-alpha1\n" +
+	versionText = "studio 1.0.0-alpha2\n" +
 		"Copyright (C) 2025\n" +
 		"Лицензия MIT: THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY\n" +
 		"OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO\n" +
@@ -22,6 +22,7 @@ const (
 
 	dbPathDesc        = "Путь к директории для распаковки"
 	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
+	registrationDesc  = "Регистрация нового клиента для CLI"
 	logDesc           = "Печатать логи"
 	helpDesc          = "Показать эту помощь"
 )

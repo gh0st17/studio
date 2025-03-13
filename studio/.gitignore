@@ -1,0 +1,5 @@
+.vscode/
+builds/
+__debug**
+**.DS_Store
+.$**

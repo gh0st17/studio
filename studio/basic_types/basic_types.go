@@ -3,8 +3,6 @@ package basic_types
 import (
 	"fmt"
 	"time"
-
-	"github.com/shopspring/decimal"
 )
 
 type AccessLevel uint
@@ -22,39 +20,34 @@ type Entity interface {
 }
 
 type Customer struct {
-	Id         uint
-	First_name string
-	Last_name  string
+	Id        uint
+	FirstName string
+	LastName  string
+	Login     string
 }
 
 func (c *Customer) GetFirstLastName() string {
-	return fmt.Sprint(c.First_name, " ", c.Last_name)
+	return fmt.Sprint(c.FirstName, " ", c.LastName)
 }
 
 func (*Customer) GetAccessLevel() AccessLevel { return CUSTOMER }
 func (c Customer) GetId() uint                { return c.Id }
 
-type Operator struct {
-	Id         uint
-	First_name string
-	Last_name  string
+type Employee struct {
+	Id        uint
+	FirstName string
+	LastName  string
+	JobId     uint
+	Login     string
 }
 
-func (o *Operator) GetFirstLastName() string {
-	return fmt.Sprint(o.First_name, " ", o.Last_name)
+func (e *Employee) GetFirstLastName() string {
+	return fmt.Sprint(e.FirstName, " ", e.LastName)
 }
 
-func (*Operator) GetAccessLevel() AccessLevel { return OPERATOR }
-func (o Operator) GetId() uint                { return o.Id }
+func (e *Employee) GetAccessLevel() AccessLevel { return AccessLevel(e.JobId) }
 
-type SysAdmin struct{}
-
-func (*SysAdmin) GetFirstLastName() string {
-	return "Системный администратор"
-}
-
-func (*SysAdmin) GetAccessLevel() AccessLevel { return SYSADMIN }
-func (s SysAdmin) GetId() uint                { return 0 }
+func (e Employee) GetId() uint { return e.Id }
 
 type OrderStatus uint
 
@@ -65,27 +58,53 @@ const (
 	Canceled
 )
 
+func (stat OrderStatus) String() string {
+	return [...]string{"Ожидает", "На исполнении", "Выдан", "Отменен"}[stat]
+}
+
 type Order struct {
 	Id          uint
-	Customer_id uint
-	Operator_id uint
+	C_id        uint
+	E_id        uint
 	Status      OrderStatus
-	Items       []Model
-	Total_price decimal.Decimal
+	TotalPrice  float64
 	CreateDate  time.Time
 	ReleaseDate time.Time
+}
+
+type RawOrder struct {
+	Id          uint
+	C_id        uint
+	E_id        uint
+	Status      OrderStatus
+	TotalPrice  float64
+	CreateDate  int64
+	ReleaseDate int64
+}
+
+type OrderItem struct {
+	Id        uint
+	O_id      uint
+	Model     []Model
+	UnitPrice float64
+}
+
+type RawOrderItem struct {
+	Id        uint
+	O_id      uint
+	Model     uint
+	UnitPrice float64
 }
 
 type Material struct {
 	Id    uint
 	Title string
-	Price decimal.Decimal
+	Price float64
 }
 
 type Model struct {
-	Id    uint
-	Title string
-
-	// Матриалы и их длина
-	Materials map[Material]decimal.Decimal
+	Id        uint
+	Title     string
+	Materials map[uint]Material
+	MatLeng   map[uint]float64
 }

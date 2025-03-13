@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	bt "studio/basic_types"
 	"studio/errtype"
@@ -17,16 +16,30 @@ type StudioDB struct {
 
 // Представляет критрии для подстановки в условие
 // SQL запроса
-type Criteria struct {
-	Key          string
-	Value        any
-	PostOperator string
+type whereClause struct {
+	key          string
+	op           string
+	value        any
+	postOperator string
+}
+
+type selectParams struct {
+	cols      string
+	table     string
+	sortcol   string
+	criteries []whereClause
+}
+
+type insertParams struct {
+	table  string
+	cols   string
+	values []string
 }
 
 // Загружает локальную базу данных из файла
-func (s *StudioDB) LoadDB(fileName string) error {
+func (db *StudioDB) LoadDB(fileName string) error {
 	var err error
-	s.sDB, err = sql.Open("sqlite3", fileName)
+	db.sDB, err = sql.Open("sqlite3", fileName)
 	if err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
 	}
@@ -35,26 +48,32 @@ func (s *StudioDB) LoadDB(fileName string) error {
 }
 
 // Закрывает базу данных
-func (s *StudioDB) CloseDB() error {
-	if err := s.sDB.Close(); err != nil {
+func (db *StudioDB) CloseDB() error {
+	if err := db.sDB.Close(); err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrCloseDB, err))
 	}
 
 	return nil
 }
 
-func (s StudioDB) Login(login string) (bt.Entity, error) {
-	rows, err := s.query(
-		"accLevel", "users", "login", []Criteria{{"login", "'" + login + "'", ""}},
-	)
+func (db *StudioDB) Login(login string) (bt.Entity, error) {
+	var sp selectParams
+
+	sp = selectParams{
+		"accLevel", "users", "",
+		[]whereClause{{"login", "=", "'" + login + "'", ""}},
+	}
+
+	rows, err := db.query(sp)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var accLevel uint
 	if !rows.Next() {
 		return nil, errtype.ErrDataBase(
-			errtype.Join(errors.New("неправильный логин"), err),
+			errtype.Join(ErrLogin, err),
 		)
 	} else {
 		if err = rows.Scan(&accLevel); err != nil {
@@ -62,136 +81,106 @@ func (s StudioDB) Login(login string) (bt.Entity, error) {
 		}
 	}
 
-	table := func() string {
-		switch bt.AccessLevel(accLevel) {
-		case bt.CUSTOMER:
-			return "customers"
-		case bt.OPERATOR:
-			return "operators"
-		default:
-			return ""
-		}
-	}()
-	rows.Close()
-
-	if table == "" {
-		return &bt.SysAdmin{}, nil
+	if bt.AccessLevel(accLevel) == bt.CUSTOMER {
+		return db.loginCustomer(login)
+	} else {
+		return db.loginEmployee(login)
 	}
-
-	rows, err = s.query(
-		"id, first_name, last_name", table, "id", []Criteria{{"login", "'" + login + "'", ""}},
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var (
-		id         uint
-		first_name string
-		last_name  string
-		entity     bt.Entity
-	)
-
-	rows.Next()
-	if err = rows.Scan(&id, &first_name, &last_name); err != nil {
-		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
-	}
-
-	entity = func() bt.Entity {
-		switch bt.AccessLevel(accLevel) {
-		case bt.CUSTOMER:
-			return &bt.Customer{
-				Id:         id,
-				First_name: first_name,
-				Last_name:  last_name,
-			}
-		case bt.OPERATOR:
-			return &bt.Operator{
-				Id:         id,
-				First_name: first_name,
-				Last_name:  last_name,
-			}
-		default:
-			return nil
-		}
-	}()
-
-	return entity, nil
 }
 
-func (s StudioDB) FetchCustomers() ([]bt.Customer, error) {
-	rows, err := s.query(
-		"id, first_name, last_name", "customers",
-		"first_name, last_name", []Criteria{{"1", "1", ""}},
-	)
-	if err != nil {
-		return nil, err
+func (db *StudioDB) Registration(customer bt.Customer) error {
+	ip := insertParams{
+		"users",
+		"login,accLevel",
+		[]string{
+			fmt.Sprintf("'%s',1", customer.Login),
+		},
 	}
-	defer rows.Close()
 
-	var (
-		id         uint
-		first_name string
-		last_name  string
-		customer   bt.Customer
-		customers  []bt.Customer
-	)
+	if err := db.insert(ip); err != nil {
+		return err
+	}
 
-	for rows.Next() {
-		err := rows.Scan(&id, &first_name, &last_name)
-		if err != nil {
-			return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
-		}
+	ip = insertParams{
+		"customers",
+		"first_name,last_name,login",
+		[]string{
+			fmt.Sprintf(
+				"'%s','%s','%s'", customer.FirstName,
+				customer.LastName, customer.Login,
+			),
+		},
+	}
 
-		customer = bt.Customer{
-			Id:         id,
-			First_name: first_name,
-			Last_name:  last_name,
-		}
+	if err := db.insert(ip); err != nil {
+		return err
+	}
 
-		customers = append(customers, customer)
+	return nil
+}
+
+func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
+	sp := selectParams{
+		"*", "customers", "first_name, last_name", []whereClause{},
+	}
+
+	if err = db.fetchTable(sp, &customers); err != nil {
+		return nil, err
 	}
 
 	return customers, nil
 }
 
-func (StudioDB) FetchOrdersByCustId(cid uint) ([]bt.Order, error) {
-	return nil, nil
+func (db *StudioDB) FetchOrdersByCid(cid uint) ([]bt.Order, error) {
+	sp := selectParams{
+		"*", "orders", "id",
+		[]whereClause{{"c_id", "=", fmt.Sprintf("%d", cid), ""}},
+	}
+
+	return db.fetchOrders(sp)
 }
 
-func (StudioDB) FetchOrders() ([]bt.Order, error) {
-	return nil, nil
+func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
+	sp := selectParams{"*", "orders", "id", []whereClause{}}
+	return db.fetchOrders(sp)
 }
 
-func (StudioDB) FetchMaterials() ([]bt.Material, error) {
-	return nil, nil
-}
+func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
+	orderItems := make(map[uint][]bt.OrderItem)
 
-func (StudioDB) FetchModels() ([]bt.Model, error) {
-	return nil, nil
-}
-
-// Общая функция для запросов в базе данных
-func (db *StudioDB) query(cols string, table string, sortcol string, criteries []Criteria) (*sql.Rows, error) {
 	var (
-		err   error
-		query string
-		rows  *sql.Rows
+		rawOrderItems []bt.RawOrderItem
+		orderItemsArr []bt.OrderItem
 	)
 
-	query = fmt.Sprintf("SELECT %s FROM %s WHERE ", cols, table)
-	for _, c := range criteries {
-		query += fmt.Sprintf("%s=%v %s ", c.Key, c.Value, c.PostOperator)
+	for _, order := range orders {
+		sp := selectParams{
+			"*", "order_items", "id",
+			[]whereClause{{"o_id", "=", fmt.Sprintf("%d", order.Id), ""}},
+		}
+		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
+			return nil, err
+		}
+		orderItemsArr = db.unrawOrdersItems(rawOrderItems, models)
+		orderItems[order.Id] = orderItemsArr
 	}
 
-	if sortcol != "" {
-		query += fmt.Sprintf("ORDER BY %s ASC", sortcol)
+	return orderItems, nil
+}
+
+func (db *StudioDB) FetchMaterials() (materials []bt.Material, err error) {
+	sp := selectParams{
+		"*", "materials", "id",
+		[]whereClause{},
 	}
 
-	if rows, err = db.sDB.Query(query); err != nil {
-		return nil, errtype.ErrDataBase(errtype.Join(ErrQuery, err))
+	if err = db.fetchTable(sp, &materials); err != nil {
+		return nil, err
 	}
 
-	return rows, nil
+	return materials, nil
+}
+
+func (db *StudioDB) FetchModels() (models []bt.Model, err error) {
+	return db.fetchModels()
 }

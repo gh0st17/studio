@@ -8,9 +8,12 @@ import (
 	"runtime"
 	bt "studio/basic_types"
 	"studio/cli/userinput"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 )
+
+const dateFormat string = "02.01.2006 15:04:05"
 
 type CLI struct {
 	ent bt.Entity
@@ -39,13 +42,21 @@ func (c *CLI) Login() string {
 	)
 
 	for {
-		login, err = userinput.Prompt("Введите Ваш логин")
+		login, err = userinput.PromptString("Введите Ваш логин")
 		if err == nil {
 			break
 		}
 	}
 
 	return login
+}
+
+func (c *CLI) Registration(login string) (customer bt.Customer) {
+	customer.FirstName, _ = userinput.PromptString("Введите свое имя")
+	customer.LastName, _ = userinput.PromptString("Введите свою фамилию")
+	customer.Login = login
+
+	return customer
 }
 
 func (c *CLI) Main() (choice string) {
@@ -60,17 +71,21 @@ func (c *CLI) Main() (choice string) {
 	return choice
 }
 
-func (c *CLI) DisplayOrderStat() {
-	fmt.Println("Статус заказов (консольный интерфейс)")
+func (c *CLI) DisplayOrders(o []bt.Order) {
+	fmt.Print(Orders(o))
 	pause()
 }
 
-func (c *CLI) DisplayOrders() {
-	fmt.Println("Список заказов (консольный интерфейс)")
+func (c *CLI) SelectOrderId() (uint, error) {
+	return userinput.PromptUint("Выберите id заказа")
+}
+
+func (c *CLI) DisplayOrderItems(oI []bt.OrderItem) {
+	fmt.Print(OrderItems(oI))
 	pause()
 }
 
-func (c *CLI) CancelOrder() {
+func (c *CLI) CancelOrder(id uint) {
 	fmt.Println("Отмена заказа (консольный интерфейс)")
 	pause()
 }
@@ -103,8 +118,9 @@ func (c *CLI) BackupDB() {
 func customerOptions() []string {
 	return []string{
 		"Создать заказ",
+		"Просмотреть заказы",
+		"Просмотреть содержимое заказa",
 		"Отменить заказ",
-		"Просмотреть статус заказов",
 		"Выход",
 	}
 }
@@ -112,8 +128,9 @@ func customerOptions() []string {
 func operatorOptions() []string {
 	return []string{
 		"Просмотреть заказы",
+		"Просмотреть содержимое заказa",
 		"Редактировать заказ",
-		"Исполнение заказа",
+		"Выполнить заказ",
 		"Выдача заказа",
 		"Выход",
 	}
@@ -149,4 +166,64 @@ func pause() {
 	} else {
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
+}
+
+type Orders []bt.Order
+
+func (orders Orders) String() (s string) {
+	var (
+		ctime, rtime string
+	)
+	s = fmt.Sprintf(
+		"  # Статус заказа %9s %19s %19s\n",
+		"Сумма", "Создан", "Выдан",
+	)
+
+	for _, o := range orders {
+		ctime = o.CreateDate.Format(dateFormat)
+
+		if o.ReleaseDate != time.Unix(0, 0) {
+			rtime = o.ReleaseDate.Format(dateFormat)
+		} else {
+			rtime = "---"
+		}
+
+		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s\n",
+			o.Id, o.Status, o.TotalPrice, ctime, rtime,
+		)
+	}
+
+	return s
+}
+
+type (
+	OrderItems []bt.OrderItem
+	Model      []bt.Model
+)
+
+func (ois OrderItems) String() (s string) {
+	var sum float64 = 0.0
+
+	for _, oi := range ois {
+		s += Model(oi.Model).String()
+		s += fmt.Sprintf("Cтоимость изготовления %2.2f\n\n", oi.UnitPrice)
+		sum += oi.UnitPrice
+	}
+	s += fmt.Sprintln("Общая стоимость заказа: ", sum)
+
+	return s
+}
+
+func (mod Model) String() (s string) {
+	for _, m := range mod {
+		s += fmt.Sprintf("%s:\n", m.Title)
+
+		for _, mat := range m.Materials {
+			s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
+				mat.Title, mat.Price, m.MatLeng[m.Id],
+			)
+		}
+	}
+
+	return s
 }
