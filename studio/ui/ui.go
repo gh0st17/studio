@@ -12,8 +12,6 @@ type UI interface {
 	DisplayOrderItems([]bt.OrderItem) // Отображение содержимого заказа
 	CancelOrder(uint)                 // Отмена заказа
 	CreateOrder()                     // Создание нового заказа
-	EditOrder(uint)                   // Редактирование заказа
-	ProcessOrder(uint)                // Исполнение заказа
-	ReleaseOrder(uint)                // Выдача заказа
+	CompleteOrder(uint)               // Выполнение заказа
 	BackupDB()                        // Резервное копирование БД
 }

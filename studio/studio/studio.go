@@ -98,15 +98,9 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		case "Отменить заказ":
 			id, _ := s.ui.SelectOrderId()
 			s.CancelOrder(id)
-		case "Редактировать заказ":
+		case "Выполнение заказа":
 			id, _ := s.ui.SelectOrderId()
-			s.EditOrder(id)
-		case "Исполнение заказа":
-			id, _ := s.ui.SelectOrderId()
-			s.ProcessOrder(id)
-		case "Выдача заказа":
-			id, _ := s.ui.SelectOrderId()
-			s.ReleaseOrder(id)
+			s.CompleteOrder(id)
 		case "Копирование БД":
 			s.BackupDB()
 		case "Выход":
@@ -134,16 +128,8 @@ func (s *Studio) CreateOrder() {
 	s.ui.CreateOrder()
 }
 
-func (s *Studio) EditOrder(id uint) {
-	s.ui.EditOrder(id)
-}
-
-func (s *Studio) ProcessOrder(id uint) {
-	s.ui.ProcessOrder(id)
-}
-
-func (s *Studio) ReleaseOrder(id uint) {
-	s.ui.ReleaseOrder(id)
+func (s *Studio) CompleteOrder(id uint) {
+	s.ui.CompleteOrder(id)
 }
 
 func (s *Studio) BackupDB() {

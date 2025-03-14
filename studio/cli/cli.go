@@ -43,7 +43,7 @@ func (c *CLI) Login() string {
 
 	for {
 		login, err = userinput.PromptString("Введите Ваш логин")
-		if err == nil {
+		if err == nil && login != "" {
 			break
 		}
 	}
@@ -95,18 +95,8 @@ func (c *CLI) CreateOrder() {
 	pause()
 }
 
-func (c *CLI) EditOrder(id uint) {
-	fmt.Printf("Редактирование заказа %d через терминал\n", id)
-	pause()
-}
-
-func (c *CLI) ProcessOrder(id uint) {
-	fmt.Printf("Исполнение заказа %d через терминал\n", id)
-	pause()
-}
-
-func (c *CLI) ReleaseOrder(id uint) {
-	fmt.Printf("Выдача заказа %d через терминал\n", id)
+func (c *CLI) CompleteOrder(id uint) {
+	fmt.Printf("Выполнение заказа %d через терминал\n", id)
 	pause()
 }
 
@@ -129,7 +119,6 @@ func operatorOptions() []string {
 	return []string{
 		"Просмотреть заказы",
 		"Просмотреть содержимое заказa",
-		"Редактировать заказ",
 		"Выполнить заказ",
 		"Выдача заказа",
 		"Выход",

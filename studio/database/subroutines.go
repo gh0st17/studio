@@ -23,8 +23,11 @@ func (db *StudioDB) loginCustomer(login string) (bt.Entity, error) {
 	}
 	defer rows.Close()
 
+	if !rows.Next() {
+		return nil, errtype.ErrDataBase(ErrLogin)
+	}
+
 	ent := &bt.Customer{}
-	rows.Next()
 	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName); err != nil {
 		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 	}
@@ -44,8 +47,11 @@ func (db *StudioDB) loginEmployee(login string) (bt.Entity, error) {
 	}
 	defer rows.Close()
 
+	if !rows.Next() {
+		return nil, errtype.ErrDataBase(ErrLogin)
+	}
+
 	ent := &bt.Employee{}
-	rows.Next()
 	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName, &ent.JobId); err != nil {
 		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 	}
