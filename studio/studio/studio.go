@@ -101,8 +101,6 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		case "Выполнение заказа":
 			id, _ := s.ui.SelectOrderId()
 			s.CompleteOrder(id)
-		case "Копирование БД":
-			s.BackupDB()
 		case "Выход":
 			if err = s.sDB.CloseDB(); err != nil {
 				return err
@@ -130,8 +128,4 @@ func (s *Studio) CreateOrder() {
 
 func (s *Studio) CompleteOrder(id uint) {
 	s.ui.CompleteOrder(id)
-}
-
-func (s *Studio) BackupDB() {
-	s.ui.BackupDB()
 }

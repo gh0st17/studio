@@ -27,8 +27,6 @@ func (c *CLI) Run(ent bt.Entity) {
 		c.opt = customerOptions()
 	case bt.OPERATOR:
 		c.opt = operatorOptions()
-	case bt.SYSADMIN:
-		c.opt = sysAdminOptions()
 	}
 	fmt.Println("Запуск консольного интерфейса...")
 	fmt.Printf("С возвращением, %s!\n", c.ent.GetFirstLastName())
@@ -121,13 +119,6 @@ func operatorOptions() []string {
 		"Просмотреть содержимое заказa",
 		"Выполнить заказ",
 		"Выдача заказа",
-		"Выход",
-	}
-}
-
-func sysAdminOptions() []string {
-	return []string{
-		"Копирование БД",
 		"Выход",
 	}
 }

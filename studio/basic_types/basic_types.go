@@ -10,7 +10,6 @@ type AccessLevel uint
 const (
 	CUSTOMER AccessLevel = iota + 1
 	OPERATOR
-	SYSADMIN
 )
 
 type Entity interface {

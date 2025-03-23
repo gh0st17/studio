@@ -13,5 +13,4 @@ type UI interface {
 	CancelOrder(uint)                 // Отмена заказа
 	CreateOrder()                     // Создание нового заказа
 	CompleteOrder(uint)               // Выполнение заказа
-	BackupDB()                        // Резервное копирование БД
 }

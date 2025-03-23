@@ -50,7 +50,3 @@ func (w *Web) CreateOrder() {
 func (w *Web) CompleteOrder(id uint) {
 	fmt.Printf("Выполнение заказа %d через web-интерфейс\n", id)
 }
-
-func (w *Web) BackupDB() {
-	fmt.Println("Резервное копирование через web-интерфейс")
-}
