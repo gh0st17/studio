@@ -104,6 +104,7 @@ type Material struct {
 type Model struct {
 	Id        uint
 	Title     string
+	Price     float64
 	Materials map[uint]Material
 	MatLeng   map[uint]float64
 }

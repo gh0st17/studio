@@ -1,11 +1,8 @@
 package web
 
-import (
-	"fmt"
-	bt "studio/basic_types"
-)
-
 type Web struct{}
+
+/*
 
 func (w *Web) Run(ent bt.Entity) {
 	panic("not implemented")
@@ -50,3 +47,5 @@ func (w *Web) CreateOrder() {
 func (w *Web) CompleteOrder(id uint) {
 	fmt.Printf("Выполнение заказа %d через web-интерфейс\n", id)
 }
+
+*/

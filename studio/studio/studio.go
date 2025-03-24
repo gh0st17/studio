@@ -1,6 +1,9 @@
 package studio
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	bt "studio/basic_types"
 	db "studio/database"
 	"studio/errtype"
@@ -64,7 +67,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	login := s.ui.Login()
+	login := "user" // s.ui.Login()
 
 	if reg {
 		customer := s.ui.Registration(login)
@@ -93,13 +96,13 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		case "Просмотреть заказы":
 			s.DisplayOrders()
 		case "Просмотреть содержимое заказa":
-			id, _ := s.ui.SelectOrderId()
+			id, _ := s.ui.ReadNumber("Выберите id заказа")
 			s.DisplayOrderItems(id)
 		case "Отменить заказ":
-			id, _ := s.ui.SelectOrderId()
+			id, _ := s.ui.ReadNumber("Выберите id заказа")
 			s.CancelOrder(id)
 		case "Выполнение заказа":
-			id, _ := s.ui.SelectOrderId()
+			id, _ := s.ui.ReadNumber("Выберите id заказа")
 			s.CompleteOrder(id)
 		case "Выход":
 			if err = s.sDB.CloseDB(); err != nil {
@@ -111,11 +114,11 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 }
 
 func (s *Studio) DisplayOrders() {
-	s.ui.DisplayOrders(s.orders)
+	s.ui.DisplayTable(s.orders)
 }
 
 func (s *Studio) DisplayOrderItems(id uint) {
-	s.ui.DisplayOrderItems(s.orderItems[id])
+	s.ui.DisplayTable(s.orderItems[id])
 }
 
 func (s *Studio) CancelOrder(id uint) {
@@ -123,7 +126,18 @@ func (s *Studio) CancelOrder(id uint) {
 }
 
 func (s *Studio) CreateOrder() {
-	s.ui.CreateOrder()
+	var models []bt.Model
+
+	s.ui.DisplayTable(s.models)
+	id, _ := s.ui.ReadNumber("Выберите модель по номеру артикула")
+
+	models = append(models, s.models[id-1])
+
+	err := s.sDB.CreateOrder(s.ent.GetId(), models)
+	if err != nil {
+		fmt.Printf("Не удалось создать заказ: %v\n", err)
+		bufio.NewReader(os.Stdin).ReadBytes('\n')
+	}
 }
 
 func (s *Studio) CompleteOrder(id uint) {

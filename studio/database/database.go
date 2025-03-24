@@ -10,8 +10,8 @@ import (
 )
 
 type StudioDB struct {
-	entity bt.Entity
-	sDB    *sql.DB
+	// entity bt.Entity
+	sDB *sql.DB
 }
 
 // Представляет критрии для подстановки в условие
@@ -57,9 +57,7 @@ func (db *StudioDB) CloseDB() error {
 }
 
 func (db *StudioDB) Login(login string) (bt.Entity, error) {
-	var sp selectParams
-
-	sp = selectParams{
+	sp := selectParams{
 		"accLevel", "users", "",
 		[]whereClause{{"login", "=", "'" + login + "'", ""}},
 	}
@@ -183,4 +181,28 @@ func (db *StudioDB) FetchMaterials() (materials []bt.Material, err error) {
 
 func (db *StudioDB) FetchModels() (models []bt.Model, err error) {
 	return db.fetchModels()
+}
+
+func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
+	var orderPrice float64
+
+	for _, m := range models {
+		orderPrice += m.Price
+	}
+
+	ip := insertParams{
+		"orders",
+		"c_id, total_price",
+		[]string{
+			fmt.Sprintf(
+				"%d,%f", cid, orderPrice,
+			),
+		},
+	}
+
+	if err = db.insert(ip); err != nil {
+		return err
+	}
+
+	return nil
 }
