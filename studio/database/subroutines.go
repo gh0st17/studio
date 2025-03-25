@@ -278,3 +278,20 @@ func (db *StudioDB) insert(ip insertParams) error {
 
 	return nil
 }
+
+func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {
+	type Id struct {
+		Id uint
+	}
+
+	sp := selectParams{
+		"id", table, "id", w,
+	}
+
+	var id []Id
+	if err := db.fetchTable(sp, &id); err != nil {
+		return 0, err
+	}
+
+	return id[len(id)-1].Id, nil
+}

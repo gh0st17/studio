@@ -103,7 +103,7 @@ func (c *CLI) displayModels(m []bt.Model) {
 	fmt.Print(Model(m))
 }
 
-func (c *CLI) ReadNumber(prompt string) (uint, error) {
+func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
 	return userinput.PromptUint(prompt)
 }
 
@@ -122,8 +122,8 @@ func (c *CLI) CompleteOrder(id uint) {
 	pause()
 }
 
-func (c *CLI) BackupDB() {
-	fmt.Println("Резервное копирование через терминал")
+func (c *CLI) Alert(msg string) {
+	fmt.Println(msg)
 	pause()
 }
 

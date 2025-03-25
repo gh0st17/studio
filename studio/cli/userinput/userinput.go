@@ -23,18 +23,26 @@ func PromptString(prompt string) (string, error) {
 }
 
 // Обрабатывает пользовательский ввод
-func PromptUint(prompt string) (_ uint, err error) {
+func PromptUint(prompt string) (nums []uint, err error) {
 	var s string
 	if s, err = PromptString(prompt); err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	var i64 uint64
-	if i64, err = strconv.ParseUint(s, 10, 0); err != nil {
-		return 0, err
+	var u64 uint64
+	numsStr := strings.Split(s, " ")
+	for _, numStr := range numsStr {
+		if numStr == "" {
+			continue
+		}
+
+		if u64, err = strconv.ParseUint(numStr, 10, 0); err != nil {
+			return nil, err
+		}
+		nums = append(nums, uint(u64))
 	}
 
-	return uint(i64), nil
+	return nums, nil
 }
 
 // Проверяет является ли стандратный ввод терминалом

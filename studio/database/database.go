@@ -184,13 +184,18 @@ func (db *StudioDB) FetchModels() (models []bt.Model, err error) {
 }
 
 func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
-	var orderPrice float64
+	var (
+		ip         insertParams
+		orderPrice float64
+		order_id   uint
+		tx         *sql.Tx
+	)
 
 	for _, m := range models {
 		orderPrice += m.Price
 	}
 
-	ip := insertParams{
+	ip = insertParams{
 		"orders",
 		"c_id, total_price",
 		[]string{
@@ -200,9 +205,43 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 		},
 	}
 
+	if tx, err = db.sDB.Begin(); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
+	}
+
 	if err = db.insert(ip); err != nil {
+		tx.Rollback()
 		return err
 	}
 
+	if order_id, err = db.getLastId(
+		"orders",
+		[]whereClause{{
+			"c_id", "=",
+			fmt.Sprintf("%d", cid), "",
+		}},
+	); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	for _, m := range models {
+		ip = insertParams{
+			"order_items",
+			"o_id, model, unit_price",
+			[]string{
+				fmt.Sprintf(
+					"%d,%d,%f", order_id, m.Id, m.Price,
+				),
+			},
+		}
+
+		if err = db.insert(ip); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	tx.Commit()
 	return nil
 }
