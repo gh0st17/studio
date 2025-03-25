@@ -19,7 +19,7 @@ type StudioDB struct {
 type whereClause struct {
 	key          string
 	op           string
-	value        any
+	value        string
 	postOperator string
 }
 
@@ -34,6 +34,12 @@ type insertParams struct {
 	table  string
 	cols   string
 	values []string
+}
+
+type updateParams struct {
+	table     string
+	set       map[string]string
+	criteries []whereClause
 }
 
 // Загружает локальную базу данных из файла
@@ -240,5 +246,19 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	}
 
 	tx.Commit()
+	return nil
+}
+
+func (db *StudioDB) CancelOrder(id uint) error {
+	up := updateParams{
+		"orders",
+		map[string]string{"status": "4"},
+		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+
+	if err := db.update(up); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -175,7 +175,7 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 		sp = selectParams{
 			"m.id, m.title, mm.leng, m.price",
 			"model_materials mm JOIN materials m ON mm.material_id = m.id", "",
-			[]whereClause{{"mm.model_id", "=", m_id, ""}},
+			[]whereClause{{"mm.model_id", "=", fmt.Sprint(m_id), ""}},
 		}
 		if mmRows, err = db.query(sp); err != nil {
 			return nil, err
@@ -263,17 +263,58 @@ func (db *StudioDB) insert(ip insertParams) error {
 		return errtype.ErrDataBase(ErrInsert)
 	}
 
-	for i, c := range ip.values {
-		query += fmt.Sprintf("(%s)", c)
+	for i, v := range ip.values {
+		query += fmt.Sprintf("(%s)", v)
 
 		if len(ip.values) != i+1 {
 			query += ","
 		}
 	}
 
-	log.Printf("[db.query]: %s", query)
+	log.Printf("[db.insert]: %s", query)
 	if _, err = db.sDB.Exec(query); err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
+	}
+
+	return nil
+}
+
+func (db *StudioDB) update(up updateParams) error {
+	var (
+		err   error
+		query string
+	)
+
+	query = fmt.Sprintf("UPDATE %s SET ", up.table)
+
+	if len(up.set) == 0 {
+		return errtype.ErrDataBase(ErrUpdate)
+	}
+
+	var set []string
+	for k, v := range up.set {
+		set = append(set, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	for i, s := range set {
+		query += s
+		if len(set) != i+1 {
+			query += ", "
+		} else {
+			query += " "
+		}
+	}
+
+	if len(up.criteries) > 0 {
+		query += "WHERE "
+		for _, c := range up.criteries {
+			query += fmt.Sprintf("%s%s%v %s ", c.key, c.op, c.value, c.postOperator)
+		}
+	}
+
+	log.Printf("[db.update]: %s", query)
+	if _, err = db.sDB.Exec(query); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrUpdate, err))
 	}
 
 	return nil

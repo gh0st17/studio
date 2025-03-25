@@ -95,18 +95,8 @@ func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
 	return userinput.PromptUint(prompt)
 }
 
-func (c *CLI) CancelOrder(id uint) {
-	fmt.Println("Отмена заказа (консольный интерфейс)")
-	pause()
-}
-
 func (c *CLI) CreateOrder() {
 	fmt.Println("Создание заказа через терминал")
-	pause()
-}
-
-func (c *CLI) CompleteOrder(id uint) {
-	fmt.Printf("Выполнение заказа %d через терминал\n", id)
 	pause()
 }
 

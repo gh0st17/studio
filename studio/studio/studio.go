@@ -1,9 +1,7 @@
 package studio
 
 import (
-	"bufio"
 	"log"
-	"os"
 	bt "studio/basic_types"
 	db "studio/database"
 	"studio/errtype"
@@ -116,8 +114,14 @@ func (s *Studio) DisplayOrderItems(id uint) {
 	s.ui.DisplayTable(s.orderItems[id])
 }
 
-func (s *Studio) CancelOrder(id uint) {
-	s.ui.CancelOrder(id)
+func (s *Studio) CancelOrder(id uint) (err error) {
+	s.sDB.CancelOrder(id)
+
+	if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Studio) CreateOrder() error {
@@ -134,7 +138,7 @@ func (s *Studio) CreateOrder() error {
 	if err != nil {
 		s.ui.Alert("Не удалось создать заказ")
 		log.Fatalf("Не удалось создать заказ: %v\n", err)
-		bufio.NewReader(os.Stdin).ReadBytes('\n')
+		return nil
 	}
 
 	if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
@@ -149,5 +153,5 @@ func (s *Studio) CreateOrder() error {
 }
 
 func (s *Studio) CompleteOrder(id uint) {
-	s.ui.CompleteOrder(id)
+	//s.ui.CompleteOrder(id)
 }
