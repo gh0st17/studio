@@ -67,18 +67,20 @@ type Order struct {
 	E_id        uint
 	Status      OrderStatus
 	TotalPrice  float64
-	CreateDate  time.Time
-	ReleaseDate time.Time
-}
-
-type RawOrder struct {
-	Id          uint
-	C_id        uint
-	E_id        uint
-	Status      OrderStatus
-	TotalPrice  float64
 	CreateDate  int64
 	ReleaseDate int64
+}
+
+func (o *Order) time(unixSec int64) time.Time {
+	return time.Unix(unixSec, 0)
+}
+
+func (o *Order) LocalCreateDate() time.Time {
+	return o.time(o.CreateDate)
+}
+
+func (o *Order) LocalReleaseDate() time.Time {
+	return o.time(o.ReleaseDate)
 }
 
 type OrderItem struct {

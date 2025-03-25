@@ -8,7 +8,6 @@ import (
 	"reflect"
 	bt "studio/basic_types"
 	"studio/errtype"
-	"time"
 )
 
 func (db *StudioDB) loginCustomer(login string) (bt.Entity, error) {
@@ -200,24 +199,8 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 }
 
 func (db *StudioDB) fetchOrders(sp selectParams) (orders []bt.Order, _ error) {
-	var rawOrders []bt.RawOrder
-	if err := db.fetchTable(sp, &rawOrders); err != nil {
+	if err := db.fetchTable(sp, &orders); err != nil {
 		return nil, err
-	}
-
-	var order bt.Order
-	for _, rawOrder := range rawOrders {
-		order = bt.Order{
-			Id:          rawOrder.Id,
-			C_id:        rawOrder.C_id,
-			E_id:        rawOrder.E_id,
-			Status:      rawOrder.Status,
-			TotalPrice:  rawOrder.TotalPrice,
-			CreateDate:  time.Unix(rawOrder.CreateDate, 0),
-			ReleaseDate: time.Unix(rawOrder.ReleaseDate, 0),
-		}
-
-		orders = append(orders, order)
 	}
 	return orders, nil
 }

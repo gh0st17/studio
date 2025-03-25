@@ -162,10 +162,10 @@ func (orders Orders) String() (s string) {
 	)
 
 	for _, o := range orders {
-		ctime = o.CreateDate.Format(dateFormat)
+		ctime = o.LocalCreateDate().Format(dateFormat)
 
-		if o.ReleaseDate != time.Unix(0, 0) {
-			rtime = o.ReleaseDate.Format(dateFormat)
+		if o.LocalReleaseDate() != time.Unix(0, 0) {
+			rtime = o.LocalReleaseDate().Format(dateFormat)
 		} else {
 			rtime = "---"
 		}
