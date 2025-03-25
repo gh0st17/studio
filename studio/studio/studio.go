@@ -46,17 +46,14 @@ func (s *Studio) initTables() (err error) {
 		}
 	}
 
-	switch accLevel {
-	case bt.CUSTOMER, bt.OPERATOR:
-		if s.materials, err = s.sDB.FetchMaterials(); err != nil {
-			return err
-		}
-		if s.models, err = s.sDB.FetchModels(); err != nil {
-			return err
-		}
-		if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
-			return err
-		}
+	if s.materials, err = s.sDB.FetchMaterials(); err != nil {
+		return err
+	}
+	if s.models, err = s.sDB.FetchModels(); err != nil {
+		return err
+	}
+	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
+		return err
 	}
 
 	return nil
@@ -123,7 +120,7 @@ func (s *Studio) CancelOrder(id uint) {
 	s.ui.CancelOrder(id)
 }
 
-func (s *Studio) CreateOrder() {
+func (s *Studio) CreateOrder() error {
 	var cartModels []bt.Model
 
 	s.ui.DisplayTable(s.models)
@@ -139,6 +136,16 @@ func (s *Studio) CreateOrder() {
 		log.Fatalf("Не удалось создать заказ: %v\n", err)
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
+
+	if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
+		return err
+	}
+
+	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Studio) CompleteOrder(id uint) {

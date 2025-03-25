@@ -34,24 +34,12 @@ func (c *CLI) Run(ent bt.Entity) {
 }
 
 func (c *CLI) Login() string {
-	var (
-		login string
-		err   error
-	)
-
-	for {
-		login, err = userinput.PromptString("Введите Ваш логин")
-		if err == nil && login != "" {
-			break
-		}
-	}
-
-	return login
+	return userinput.PromptString("Введите Ваш логин")
 }
 
 func (c *CLI) Registration(login string) (customer bt.Customer) {
-	customer.FirstName, _ = userinput.PromptString("Введите свое имя")
-	customer.LastName, _ = userinput.PromptString("Введите свою фамилию")
+	customer.FirstName = userinput.PromptString("Введите свое имя")
+	customer.LastName = userinput.PromptString("Введите свою фамилию")
 	customer.Login = login
 
 	return customer
@@ -212,7 +200,7 @@ func (ois OrderItems) String() (s string) {
 		s += Model(oi.Model).String()
 		sum += oi.UnitPrice
 	}
-	s += fmt.Sprintln("Общая стоимость заказа: ", sum)
+	s += fmt.Sprintln("Общая стоимость заказа:", sum)
 
 	return s
 }

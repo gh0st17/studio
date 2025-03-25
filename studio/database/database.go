@@ -146,16 +146,13 @@ func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
 func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
 	orderItems := make(map[uint][]bt.OrderItem)
 
-	var (
-		rawOrderItems []bt.RawOrderItem
-		orderItemsArr []bt.OrderItem
-	)
-
+	var orderItemsArr []bt.OrderItem
 	for _, order := range orders {
 		sp := selectParams{
 			"*", "order_items", "id",
 			[]whereClause{{"o_id", "=", fmt.Sprintf("%d", order.Id), ""}},
 		}
+		var rawOrderItems []bt.RawOrderItem
 		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
 			return nil, err
 		}

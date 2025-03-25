@@ -51,14 +51,14 @@ func (e Employee) GetId() uint { return e.Id }
 type OrderStatus uint
 
 const (
-	Pending OrderStatus = iota
+	Pending OrderStatus = iota + 1
 	Processing
 	Released
 	Canceled
 )
 
 func (stat OrderStatus) String() string {
-	return [...]string{"Ожидает", "На исполнении", "Выдан", "Отменен"}[stat]
+	return [...]string{"Ожидает", "На исполнении", "Выдан", "Отменен"}[stat-1]
 }
 
 type Order struct {
