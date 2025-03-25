@@ -27,8 +27,6 @@ func (c *CLI) Run(ent bt.Entity) {
 		c.opt = customerOptions()
 	case bt.OPERATOR:
 		c.opt = operatorOptions()
-	case bt.SYSADMIN:
-		c.opt = sysAdminOptions()
 	}
 	fmt.Println("Запуск консольного интерфейса...")
 	fmt.Printf("С возвращением, %s!\n", c.ent.GetFirstLastName())
@@ -43,7 +41,7 @@ func (c *CLI) Login() string {
 
 	for {
 		login, err = userinput.PromptString("Введите Ваш логин")
-		if err == nil {
+		if err == nil && login != "" {
 			break
 		}
 	}
@@ -71,18 +69,42 @@ func (c *CLI) Main() (choice string) {
 	return choice
 }
 
-func (c *CLI) DisplayOrders(o []bt.Order) {
-	fmt.Print(Orders(o))
+func (c *CLI) DisplayTable(table interface{}) {
+	if orders, ok := table.([]bt.Order); ok {
+		c.displayOrders(orders)
+	} else if orderItems, ok := table.([]bt.OrderItem); ok {
+		c.displayOrderItems(orderItems)
+	} else if models, ok := table.([]bt.Model); ok {
+		c.displayModels(models)
+	} else {
+		panic("Неизвестный тип таблицы")
+	}
+}
+
+func (c *CLI) displayOrders(o []bt.Order) {
+	if len(o) > 0 {
+		fmt.Print(Orders(o))
+	} else {
+		fmt.Println("Вы еще не совершали заказов")
+	}
 	pause()
 }
 
-func (c *CLI) SelectOrderId() (uint, error) {
-	return userinput.PromptUint("Выберите id заказа")
+func (c *CLI) displayOrderItems(oI []bt.OrderItem) {
+	if len(oI) > 0 {
+		fmt.Print(OrderItems(oI))
+	} else {
+		fmt.Println("Заказа с таким номером не существует")
+	}
+	pause()
 }
 
-func (c *CLI) DisplayOrderItems(oI []bt.OrderItem) {
-	fmt.Print(OrderItems(oI))
-	pause()
+func (c *CLI) displayModels(m []bt.Model) {
+	fmt.Print(Model(m))
+}
+
+func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
+	return userinput.PromptUint(prompt)
 }
 
 func (c *CLI) CancelOrder(id uint) {
@@ -95,23 +117,13 @@ func (c *CLI) CreateOrder() {
 	pause()
 }
 
-func (c *CLI) EditOrder(id uint) {
-	fmt.Printf("Редактирование заказа %d через терминал\n", id)
+func (c *CLI) CompleteOrder(id uint) {
+	fmt.Printf("Выполнение заказа %d через терминал\n", id)
 	pause()
 }
 
-func (c *CLI) ProcessOrder(id uint) {
-	fmt.Printf("Исполнение заказа %d через терминал\n", id)
-	pause()
-}
-
-func (c *CLI) ReleaseOrder(id uint) {
-	fmt.Printf("Выдача заказа %d через терминал\n", id)
-	pause()
-}
-
-func (c *CLI) BackupDB() {
-	fmt.Println("Резервное копирование через терминал")
+func (c *CLI) Alert(msg string) {
+	fmt.Println(msg)
 	pause()
 }
 
@@ -129,16 +141,8 @@ func operatorOptions() []string {
 	return []string{
 		"Просмотреть заказы",
 		"Просмотреть содержимое заказa",
-		"Редактировать заказ",
 		"Выполнить заказ",
 		"Выдача заказа",
-		"Выход",
-	}
-}
-
-func sysAdminOptions() []string {
-	return []string{
-		"Копирование БД",
 		"Выход",
 	}
 }
@@ -206,7 +210,6 @@ func (ois OrderItems) String() (s string) {
 
 	for _, oi := range ois {
 		s += Model(oi.Model).String()
-		s += fmt.Sprintf("Cтоимость изготовления %2.2f\n\n", oi.UnitPrice)
 		sum += oi.UnitPrice
 	}
 	s += fmt.Sprintln("Общая стоимость заказа: ", sum)
@@ -216,13 +219,14 @@ func (ois OrderItems) String() (s string) {
 
 func (mod Model) String() (s string) {
 	for _, m := range mod {
-		s += fmt.Sprintf("%s:\n", m.Title)
+		s += fmt.Sprintf("%s (Артикул %d):\n", m.Title, m.Id)
 
 		for _, mat := range m.Materials {
 			s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
 				mat.Title, mat.Price, m.MatLeng[m.Id],
 			)
 		}
+		s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", m.Price)
 	}
 
 	return s

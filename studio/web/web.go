@@ -1,11 +1,8 @@
 package web
 
-import (
-	"fmt"
-	bt "studio/basic_types"
-)
-
 type Web struct{}
+
+/*
 
 func (w *Web) Run(ent bt.Entity) {
 	panic("not implemented")
@@ -47,18 +44,8 @@ func (w *Web) CreateOrder() {
 	fmt.Println("Создание заказа через web-интерфейс")
 }
 
-func (w *Web) EditOrder(id uint) {
-	fmt.Printf("Редактирование заказа %d через web-интерфейс\n", id)
+func (w *Web) CompleteOrder(id uint) {
+	fmt.Printf("Выполнение заказа %d через web-интерфейс\n", id)
 }
 
-func (w *Web) ProcessOrder(id uint) {
-	fmt.Printf("Исполнение заказа %d через web-интерфейс\n", id)
-}
-
-func (w *Web) ReleaseOrder(id uint) {
-	fmt.Printf("Выдача заказа %d через web-интерфейс\n", id)
-}
-
-func (w *Web) BackupDB() {
-	fmt.Println("Резервное копирование через web-интерфейс")
-}
+*/

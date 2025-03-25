@@ -6,7 +6,6 @@ import (
 	"studio/params"
 	"studio/studio"
 	"studio/ui"
-	"studio/web"
 )
 
 func main() {
@@ -20,7 +19,8 @@ func main() {
 	case params.CLI:
 		ui = &cli.CLI{}
 	case params.Web:
-		ui = &web.Web{}
+		panic("Не реализовано")
+		//ui = &web.Web{}
 	}
 
 	studio, err := studio.New(ui)

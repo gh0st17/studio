@@ -1,6 +1,9 @@
 package studio
 
 import (
+	"bufio"
+	"log"
+	"os"
 	bt "studio/basic_types"
 	db "studio/database"
 	"studio/errtype"
@@ -64,7 +67,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	login := s.ui.Login()
+	login := "user" // s.ui.Login()
 
 	if reg {
 		customer := s.ui.Registration(login)
@@ -77,10 +80,8 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	if s.ent.GetAccessLevel() != 3 {
-		if err = s.initTables(); err != nil {
-			return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
-		}
+	if err = s.initTables(); err != nil {
+		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
 	}
 
 	s.ui.Run(s.ent)
@@ -93,22 +94,14 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		case "Просмотреть заказы":
 			s.DisplayOrders()
 		case "Просмотреть содержимое заказa":
-			id, _ := s.ui.SelectOrderId()
-			s.DisplayOrderItems(id)
+			id, _ := s.ui.ReadNumbers("Выберите id заказа")
+			s.DisplayOrderItems(id[0])
 		case "Отменить заказ":
-			id, _ := s.ui.SelectOrderId()
-			s.CancelOrder(id)
-		case "Редактировать заказ":
-			id, _ := s.ui.SelectOrderId()
-			s.EditOrder(id)
-		case "Исполнение заказа":
-			id, _ := s.ui.SelectOrderId()
-			s.ProcessOrder(id)
-		case "Выдача заказа":
-			id, _ := s.ui.SelectOrderId()
-			s.ReleaseOrder(id)
-		case "Копирование БД":
-			s.BackupDB()
+			id, _ := s.ui.ReadNumbers("Выберите id заказа")
+			s.CancelOrder(id[0])
+		case "Выполнение заказа":
+			id, _ := s.ui.ReadNumbers("Выберите id заказа")
+			s.CompleteOrder(id[0])
 		case "Выход":
 			if err = s.sDB.CloseDB(); err != nil {
 				return err
@@ -119,11 +112,11 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 }
 
 func (s *Studio) DisplayOrders() {
-	s.ui.DisplayOrders(s.orders)
+	s.ui.DisplayTable(s.orders)
 }
 
 func (s *Studio) DisplayOrderItems(id uint) {
-	s.ui.DisplayOrderItems(s.orderItems[id])
+	s.ui.DisplayTable(s.orderItems[id])
 }
 
 func (s *Studio) CancelOrder(id uint) {
@@ -131,21 +124,23 @@ func (s *Studio) CancelOrder(id uint) {
 }
 
 func (s *Studio) CreateOrder() {
-	s.ui.CreateOrder()
+	var cartModels []bt.Model
+
+	s.ui.DisplayTable(s.models)
+	ids, _ := s.ui.ReadNumbers("Выберите модель по номеру артикула")
+
+	for _, id := range ids {
+		cartModels = append(cartModels, s.models[id-1])
+	}
+
+	err := s.sDB.CreateOrder(s.ent.GetId(), cartModels)
+	if err != nil {
+		s.ui.Alert("Не удалось создать заказ")
+		log.Fatalf("Не удалось создать заказ: %v\n", err)
+		bufio.NewReader(os.Stdin).ReadBytes('\n')
+	}
 }
 
-func (s *Studio) EditOrder(id uint) {
-	s.ui.EditOrder(id)
-}
-
-func (s *Studio) ProcessOrder(id uint) {
-	s.ui.ProcessOrder(id)
-}
-
-func (s *Studio) ReleaseOrder(id uint) {
-	s.ui.ReleaseOrder(id)
-}
-
-func (s *Studio) BackupDB() {
-	s.ui.BackupDB()
+func (s *Studio) CompleteOrder(id uint) {
+	s.ui.CompleteOrder(id)
 }

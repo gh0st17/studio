@@ -10,4 +10,5 @@ var (
 	ErrReadDB  = fmt.Errorf("ошибка чтения базы данных")
 	ErrDelete  = fmt.Errorf("ошибка при удалении из базы данных")
 	ErrLogin   = fmt.Errorf("ошибка авторизации")
+	ErrBegin   = fmt.Errorf("не удалось начать транзакцию")
 )

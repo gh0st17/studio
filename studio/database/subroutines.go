@@ -23,8 +23,11 @@ func (db *StudioDB) loginCustomer(login string) (bt.Entity, error) {
 	}
 	defer rows.Close()
 
+	if !rows.Next() {
+		return nil, errtype.ErrDataBase(ErrLogin)
+	}
+
 	ent := &bt.Customer{}
-	rows.Next()
 	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName); err != nil {
 		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 	}
@@ -44,8 +47,11 @@ func (db *StudioDB) loginEmployee(login string) (bt.Entity, error) {
 	}
 	defer rows.Close()
 
+	if !rows.Next() {
+		return nil, errtype.ErrDataBase(ErrLogin)
+	}
+
 	ent := &bt.Employee{}
-	rows.Next()
 	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName, &ent.JobId); err != nil {
 		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 	}
@@ -107,11 +113,28 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 		scanDest := make([]interface{}, numFields)
 
 		for i := 0; i < numFields; i++ {
-			scanDest[i] = elem.Field(i).Addr().Interface()
+			field := elem.Field(i)
+			if field.Kind() == reflect.Uint {
+				scanDest[i] = new(sql.NullInt64)
+			} else {
+				scanDest[i] = field.Addr().Interface()
+			}
 		}
 
 		if err := rows.Scan(scanDest...); err != nil {
 			return errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
+		}
+
+		for i := 0; i < numFields; i++ {
+			field := elem.Field(i)
+			if field.Kind() == reflect.Uint {
+				nullInt := scanDest[i].(*sql.NullInt64)
+				if nullInt.Valid {
+					field.SetUint(uint64(nullInt.Int64))
+				} else {
+					field.SetUint(0)
+				}
+			}
 		}
 
 		destSlice.Elem().Set(reflect.Append(destSlice.Elem(), elem))
@@ -132,19 +155,20 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 		model        bt.Model
 	)
 
-	sp = selectParams{"id, title", "models", "id", []whereClause{}}
+	sp = selectParams{"id, title, price", "models", "id", []whereClause{}}
 	if rows, err = db.query(sp); err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		if err := rows.Scan(&m_id, &title); err != nil {
+		if err := rows.Scan(&m_id, &title, &price); err != nil {
 			return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 		}
 
 		model.Id = m_id
 		model.Title = title
+		model.Price = price
 		model.Materials = make(map[uint]bt.Material)
 		model.MatLeng = make(map[uint]float64)
 
@@ -253,4 +277,21 @@ func (db *StudioDB) insert(ip insertParams) error {
 	}
 
 	return nil
+}
+
+func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {
+	type Id struct {
+		Id uint
+	}
+
+	sp := selectParams{
+		"id", table, "id", w,
+	}
+
+	var id []Id
+	if err := db.fetchTable(sp, &id); err != nil {
+		return 0, err
+	}
+
+	return id[len(id)-1].Id, nil
 }
