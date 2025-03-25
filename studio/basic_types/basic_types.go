@@ -86,14 +86,7 @@ func (o *Order) LocalReleaseDate() time.Time {
 type OrderItem struct {
 	Id        uint
 	O_id      uint
-	Model     []Model
-	UnitPrice float64
-}
-
-type RawOrderItem struct {
-	Id        uint
-	O_id      uint
-	Model     uint
+	Model     Model
 	UnitPrice float64
 }
 

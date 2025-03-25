@@ -150,20 +150,36 @@ func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
 }
 
 func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
+	type RawOrderItem struct {
+		Id        uint
+		O_id      uint
+		Model     uint
+		UnitPrice float64
+	}
+
 	orderItems := make(map[uint][]bt.OrderItem)
 
-	var orderItemsArr []bt.OrderItem
 	for _, order := range orders {
 		sp := selectParams{
 			"*", "order_items", "id",
 			[]whereClause{{"o_id", "=", fmt.Sprintf("%d", order.Id), ""}},
 		}
-		var rawOrderItems []bt.RawOrderItem
+		var rawOrderItems []RawOrderItem
 		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
 			return nil, err
 		}
-		orderItemsArr = db.unrawOrdersItems(rawOrderItems, models)
-		orderItems[order.Id] = orderItemsArr
+
+		for _, rawOrderItem := range rawOrderItems {
+			orderItems[order.Id] = append(
+				orderItems[order.Id],
+				bt.OrderItem{
+					Id:        rawOrderItem.Id,
+					O_id:      rawOrderItem.O_id,
+					Model:     models[rawOrderItem.Model-1],
+					UnitPrice: rawOrderItem.UnitPrice,
+				},
+			)
+		}
 	}
 
 	return orderItems, nil

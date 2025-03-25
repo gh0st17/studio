@@ -58,39 +58,6 @@ func (db *StudioDB) loginEmployee(login string) (bt.Entity, error) {
 	return ent, nil
 }
 
-func (*StudioDB) unrawOrdersItems(rawOI []bt.RawOrderItem, models []bt.Model) []bt.OrderItem {
-	var orderItems []bt.OrderItem
-	orderItemMap := make(map[uint]*bt.OrderItem) // Храним ссылки на уже добавленные заказы
-
-	modelsMap := make(map[uint]bt.Model)
-	for _, model := range models {
-		modelsMap[model.Id] = model
-	}
-
-	for _, roi := range rawOI {
-		orderItem, exists := orderItemMap[roi.Id]
-		if !exists {
-			orderItem = &bt.OrderItem{
-				Id:        roi.Id,
-				O_id:      roi.O_id,
-				Model:     []bt.Model{}, // Инициализируем пустым срезом
-				UnitPrice: roi.UnitPrice,
-			}
-			orderItemMap[roi.Id] = orderItem
-		}
-
-		if model, found := modelsMap[roi.Model]; found {
-			orderItemMap[roi.Id].Model = append(orderItem.Model, model)
-		}
-	}
-
-	for _, orderItem := range orderItemMap {
-		orderItems = append(orderItems, *orderItem)
-	}
-
-	return orderItems
-}
-
 func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 	rows, err := db.query(sp)
 	if err != nil {

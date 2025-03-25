@@ -88,7 +88,7 @@ func (c *CLI) displayOrderItems(oI []bt.OrderItem) {
 }
 
 func (c *CLI) displayModels(m []bt.Model) {
-	fmt.Print(Model(m))
+	fmt.Print(Models(m))
 }
 
 func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
@@ -180,13 +180,15 @@ func (orders Orders) String() (s string) {
 
 type (
 	OrderItems []bt.OrderItem
-	Model      []bt.Model
+	Model      bt.Model
+	Models     []bt.Model
 )
 
 func (ois OrderItems) String() (s string) {
 	var sum float64 = 0.0
 
-	for _, oi := range ois {
+	for i, oi := range ois {
+		s += fmt.Sprintln("Позиция:", i+1)
 		s += Model(oi.Model).String()
 		sum += oi.UnitPrice
 	}
@@ -195,16 +197,22 @@ func (ois OrderItems) String() (s string) {
 	return s
 }
 
-func (mod Model) String() (s string) {
-	for _, m := range mod {
-		s += fmt.Sprintf("%s (Артикул %d):\n", m.Title, m.Id)
+func (m Model) String() (s string) {
+	s += fmt.Sprintf("%s (Артикул %d):\n", m.Title, m.Id)
 
-		for _, mat := range m.Materials {
-			s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
-				mat.Title, mat.Price, m.MatLeng[m.Id],
-			)
-		}
-		s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", m.Price)
+	for _, mat := range m.Materials {
+		s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
+			mat.Title, mat.Price, m.MatLeng[m.Id],
+		)
+	}
+	s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", m.Price)
+
+	return s
+}
+
+func (mod Models) String() (s string) {
+	for _, m := range mod {
+		s += Model(m).String()
 	}
 
 	return s

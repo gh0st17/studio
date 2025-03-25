@@ -128,7 +128,7 @@ func (s *Studio) CreateOrder() error {
 	var cartModels []bt.Model
 
 	s.ui.DisplayTable(s.models)
-	ids, _ := s.ui.ReadNumbers("Выберите модель по номеру артикула")
+	ids, _ := s.ui.ReadNumbers("Выберите модели по номеру артикула")
 
 	for _, id := range ids {
 		cartModels = append(cartModels, s.models[id-1])
