@@ -29,13 +29,9 @@ func PromptString(prompt string) string {
 
 // Обрабатывает пользовательский ввод
 func PromptUint(prompt string) (nums []uint, err error) {
-	var (
-		u64 uint64
-		s   string
-	)
+	var u64 uint64
 
-	s = PromptString(prompt)
-	numsStr := strings.Split(s, " ")
+	numsStr := strings.Split(PromptString(prompt), " ")
 	for _, numStr := range numsStr {
 		if numStr == "" {
 			continue

@@ -102,18 +102,27 @@ func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 	return customers, nil
 }
 
-func (db *StudioDB) FetchOrdersByCid(cid uint) ([]bt.Order, error) {
+func (db *StudioDB) FetchOrdersByCid(cid uint) (orders []bt.Order, err error) {
 	sp := selectParams{
 		"*", "orders", "id",
 		[]whereClause{{"c_id", "=", fmt.Sprintf("%d", cid), ""}},
 	}
 
-	return db.fetchOrders(sp)
+	if err = db.fetchTable(sp, &orders); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
 
 func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
 	sp := selectParams{"*", "orders", "id", []whereClause{}}
-	return db.fetchOrders(sp)
+
+	if err = db.fetchTable(sp, &orders); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
 
 func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {

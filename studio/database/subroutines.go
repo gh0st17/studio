@@ -87,7 +87,7 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 			}
 		}
 
-		if err := rows.Scan(scanDest...); err != nil {
+		if err = rows.Scan(scanDest...); err != nil {
 			return errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 		}
 
@@ -116,8 +116,7 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 		rows, mmRows *sql.Rows
 		m_id         uint
 		title        string
-		leng         float64
-		price        float64
+		leng, price  float64
 		model        bt.Model
 	)
 
@@ -163,13 +162,6 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 	}
 
 	return models, nil
-}
-
-func (db *StudioDB) fetchOrders(sp selectParams) (orders []bt.Order, _ error) {
-	if err := db.fetchTable(sp, &orders); err != nil {
-		return nil, err
-	}
-	return orders, nil
 }
 
 func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {

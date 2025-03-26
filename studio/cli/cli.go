@@ -69,26 +69,26 @@ func (c *CLI) DisplayTable(table interface{}) {
 	}
 }
 
-func (c *CLI) displayOrders(o []bt.Order) {
-	if len(o) > 0 {
-		fmt.Print(Orders(o))
+func (c *CLI) displayOrders(orders []bt.Order) {
+	if len(orders) > 0 {
+		fmt.Print(Orders(orders))
 	} else {
 		fmt.Println("Вы еще не совершали заказов")
 	}
 	pause()
 }
 
-func (c *CLI) displayOrderItems(oI []bt.OrderItem) {
-	if len(oI) > 0 {
-		fmt.Print(OrderItems(oI))
+func (c *CLI) displayOrderItems(orderItems []bt.OrderItem) {
+	if len(orderItems) > 0 {
+		fmt.Print(OrderItems(orderItems))
 	} else {
 		fmt.Println("Заказа с таким номером не существует")
 	}
 	pause()
 }
 
-func (c *CLI) displayModels(m []bt.Model) {
-	fmt.Print(Models(m))
+func (c *CLI) displayModels(models []bt.Model) {
+	fmt.Print(Models(models))
 }
 
 func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
@@ -184,10 +184,10 @@ type (
 	Models     []bt.Model
 )
 
-func (ois OrderItems) String() (s string) {
+func (orderItems OrderItems) String() (s string) {
 	var sum float64 = 0.0
 
-	for i, oi := range ois {
+	for i, oi := range orderItems {
 		s += fmt.Sprintln("Позиция:", i+1)
 		s += Model(oi.Model).String()
 		sum += oi.UnitPrice
@@ -197,21 +197,21 @@ func (ois OrderItems) String() (s string) {
 	return s
 }
 
-func (m Model) String() (s string) {
-	s += fmt.Sprintf("%s (Артикул %d):\n", m.Title, m.Id)
+func (model Model) String() (s string) {
+	s += fmt.Sprintf("%s (Артикул %d):\n", model.Title, model.Id)
 
-	for _, mat := range m.Materials {
+	for _, mat := range model.Materials {
 		s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
-			mat.Title, mat.Price, m.MatLeng[m.Id],
+			mat.Title, mat.Price, model.MatLeng[model.Id],
 		)
 	}
-	s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", m.Price)
+	s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", model.Price)
 
 	return s
 }
 
-func (mod Models) String() (s string) {
-	for _, m := range mod {
+func (models Models) String() (s string) {
+	for _, m := range models {
 		s += Model(m).String()
 	}
 

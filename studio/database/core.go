@@ -43,14 +43,8 @@ type updateParams struct {
 }
 
 // Общая функция для запросов в базе данных
-func (db *StudioDB) query(sp selectParams) (*sql.Rows, error) {
-	var (
-		err   error
-		query string
-		rows  *sql.Rows
-	)
-
-	query = fmt.Sprintf("SELECT %s FROM %s ", sp.cols, sp.table)
+func (db *StudioDB) query(sp selectParams) (rows *sql.Rows, err error) {
+	query := fmt.Sprintf("SELECT %s FROM %s ", sp.cols, sp.table)
 
 	if len(sp.criteries) > 0 {
 		query += "WHERE "
@@ -72,13 +66,8 @@ func (db *StudioDB) query(sp selectParams) (*sql.Rows, error) {
 }
 
 // Общая функция для вставки в базу данных
-func (db *StudioDB) insert(ip insertParams) error {
-	var (
-		err   error
-		query string
-	)
-
-	query = fmt.Sprintf("INSERT INTO %s (%s) VALUES ", ip.table, ip.cols)
+func (db *StudioDB) insert(ip insertParams) (err error) {
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", ip.table, ip.cols)
 
 	if len(ip.values) == 0 {
 		return errtype.ErrDataBase(ErrInsert)
@@ -101,13 +90,8 @@ func (db *StudioDB) insert(ip insertParams) error {
 }
 
 // Общая функция для обновления в базе данных
-func (db *StudioDB) update(up updateParams) error {
-	var (
-		err   error
-		query string
-	)
-
-	query = fmt.Sprintf("UPDATE %s SET ", up.table)
+func (db *StudioDB) update(up updateParams) (err error) {
+	query := fmt.Sprintf("UPDATE %s SET ", up.table)
 
 	if len(up.set) == 0 {
 		return errtype.ErrDataBase(ErrUpdate)
