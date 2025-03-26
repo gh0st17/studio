@@ -9,39 +9,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type StudioDB struct {
-	// entity bt.Entity
-	sDB *sql.DB
-}
-
-// Представляет критрии для подстановки в условие
-// SQL запроса
-type whereClause struct {
-	key          string
-	op           string
-	value        string
-	postOperator string
-}
-
-type selectParams struct {
-	cols      string
-	table     string
-	sortcol   string
-	criteries []whereClause
-}
-
-type insertParams struct {
-	table  string
-	cols   string
-	values []string
-}
-
-type updateParams struct {
-	table     string
-	set       map[string]string
-	criteries []whereClause
-}
-
 // Загружает локальную базу данных из файла
 func (db *StudioDB) LoadDB(fileName string) error {
 	var err error
