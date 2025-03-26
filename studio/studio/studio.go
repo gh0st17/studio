@@ -19,7 +19,7 @@ type Studio struct {
 	models     []bt.Model
 }
 
-func New(ui ui.UI) (_ *Studio, err error) {
+func New(ui ui.UI) (*Studio, error) {
 	s := Studio{
 		ui: ui,
 	}
@@ -27,19 +27,28 @@ func New(ui ui.UI) (_ *Studio, err error) {
 	return &s, nil
 }
 
-func (s *Studio) initTables() (err error) {
-	accLevel := s.ent.GetAccessLevel()
-
+func (s *Studio) updateOrders(accLevel bt.AccessLevel) (err error) {
 	switch accLevel {
 	case bt.CUSTOMER:
 		if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
 			return err
 		}
 	case bt.OPERATOR:
-		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
+		if s.orders, err = s.sDB.FetchOrders(); err != nil {
 			return err
 		}
-		if s.orders, err = s.sDB.FetchOrders(); err != nil {
+	}
+
+	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Studio) initTables(accLevel bt.AccessLevel) (err error) {
+	if accLevel == bt.OPERATOR {
+		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
 			return err
 		}
 	}
@@ -50,11 +59,8 @@ func (s *Studio) initTables() (err error) {
 	if s.models, err = s.sDB.FetchModels(); err != nil {
 		return err
 	}
-	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
-		return err
-	}
 
-	return nil
+	return s.updateOrders(accLevel)
 }
 
 func (s *Studio) Run(dbPath string, reg bool) (err error) {
@@ -62,7 +68,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	login := "user" // s.ui.Login()
+	login := s.ui.Login()
 
 	if reg {
 		customer := s.ui.Registration(login)
@@ -75,7 +81,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	if err = s.initTables(); err != nil {
+	if err = s.initTables(s.ent.GetAccessLevel()); err != nil {
 		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
 	}
 
@@ -114,14 +120,9 @@ func (s *Studio) DisplayOrderItems(id uint) {
 	s.ui.DisplayTable(s.orderItems[id])
 }
 
-func (s *Studio) CancelOrder(id uint) (err error) {
+func (s *Studio) CancelOrder(id uint) error {
 	s.sDB.CancelOrder(id)
-
-	if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
-		return err
-	}
-
-	return nil
+	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
 func (s *Studio) CreateOrder() error {
@@ -141,15 +142,7 @@ func (s *Studio) CreateOrder() error {
 		return nil
 	}
 
-	if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
-		return err
-	}
-
-	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
-		return err
-	}
-
-	return nil
+	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
 func (s *Studio) CompleteOrder(id uint) {

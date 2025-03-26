@@ -41,10 +41,13 @@ func PromptUint(prompt string) (nums []uint, err error) {
 			continue
 		}
 
-		if u64, err = strconv.ParseUint(numStr, 10, 0); err != nil {
-			return nil, err
+		if u64, err = strconv.ParseUint(numStr, 10, 0); err == nil {
+			nums = append(nums, uint(u64))
 		}
-		nums = append(nums, uint(u64))
+	}
+
+	if len(nums) == 0 {
+		return PromptUint(prompt)
 	}
 
 	return nums, nil
