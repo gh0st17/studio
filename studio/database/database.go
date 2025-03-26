@@ -241,10 +241,29 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	return nil
 }
 
-func (db *StudioDB) CancelOrder(id uint) error {
+func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
+	sp := selectParams{
+		"status", "orders", "",
+		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+	var orderStatus bt.OrderStatus
+	if rows, err := db.query(sp); err != nil {
+		return err
+	} else {
+		rows.Next()
+		rows.Scan(&orderStatus)
+		rows.Close()
+	}
+
+	if newStatus == bt.Canceled && orderStatus > 1 {
+		return errtype.ErrDataBase(fmt.Errorf("not pending"))
+	} else if newStatus != bt.Canceled && newStatus-orderStatus != 1 {
+		return errtype.ErrDataBase(fmt.Errorf("status changing out of range"))
+	}
+
 	up := updateParams{
 		"orders",
-		map[string]string{"status": "4"},
+		map[string]string{"status": fmt.Sprint(int(newStatus))},
 		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
 	}
 

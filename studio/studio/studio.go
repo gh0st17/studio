@@ -99,30 +99,24 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 			s.DisplayOrderItems(id[0])
 		case "Отменить заказ":
 			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			s.CancelOrder(id[0])
-		case "Выполнение заказа":
+			err = s.CancelOrder(id[0])
+		case "Выполнить заказ":
 			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			s.CompleteOrder(id[0])
+			err = s.ProcessOrder(id[0])
+		case "Выдача заказа":
+			id, _ := s.ui.ReadNumbers("Выберите id заказа")
+			err = s.ReleaseOrder(id[0])
 		case "Выход":
 			if err = s.sDB.CloseDB(); err != nil {
 				return err
 			}
 			return nil
 		}
+
+		if err != nil {
+			return err
+		}
 	}
-}
-
-func (s *Studio) DisplayOrders() {
-	s.ui.DisplayTable(s.orders)
-}
-
-func (s *Studio) DisplayOrderItems(id uint) {
-	s.ui.DisplayTable(s.orderItems[id])
-}
-
-func (s *Studio) CancelOrder(id uint) error {
-	s.sDB.CancelOrder(id)
-	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
 func (s *Studio) CreateOrder() error {
@@ -145,6 +139,31 @@ func (s *Studio) CreateOrder() error {
 	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
-func (s *Studio) CompleteOrder(id uint) {
-	//s.ui.CompleteOrder(id)
+func (s *Studio) DisplayOrders() {
+	s.ui.DisplayTable(s.orders)
+}
+
+func (s *Studio) DisplayOrderItems(id uint) {
+	s.ui.DisplayTable(s.orderItems[id])
+}
+
+func (s *Studio) CancelOrder(id uint) error {
+	if err := s.sDB.SetOrderStatus(id, bt.Canceled); err != nil {
+		return err
+	}
+	return s.updateOrders(s.ent.GetAccessLevel())
+}
+
+func (s *Studio) ProcessOrder(id uint) error {
+	if err := s.sDB.SetOrderStatus(id, bt.Processing); err != nil {
+		return err
+	}
+	return s.updateOrders(s.ent.GetAccessLevel())
+}
+
+func (s *Studio) ReleaseOrder(id uint) error {
+	if err := s.sDB.SetOrderStatus(id, bt.Released); err != nil {
+		return err
+	}
+	return s.updateOrders(s.ent.GetAccessLevel())
 }
