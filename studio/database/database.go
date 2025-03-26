@@ -256,9 +256,9 @@ func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
 	}
 
 	if newStatus == bt.Canceled && orderStatus > 1 {
-		return errtype.ErrDataBase(fmt.Errorf("not pending"))
+		return ErrNotPending
 	} else if newStatus != bt.Canceled && newStatus-orderStatus != 1 {
-		return errtype.ErrDataBase(fmt.Errorf("status changing out of range"))
+		return ErrStatusRange
 	}
 
 	up := updateParams{

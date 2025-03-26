@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"fmt"
 	"log"
 	bt "studio/basic_types"
 	db "studio/database"
@@ -91,7 +92,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		choice := s.ui.Main()
 		switch choice {
 		case "Создать заказ":
-			s.CreateOrder()
+			err = s.CreateOrder()
 		case "Просмотреть заказы":
 			s.DisplayOrders()
 		case "Просмотреть содержимое заказa":
@@ -113,7 +114,13 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 			return nil
 		}
 
-		if err != nil {
+		switch err {
+		case nil:
+			continue
+		case db.ErrNotPending, db.ErrStatusRange:
+			s.ui.Alert(fmt.Sprint(err))
+			err = nil
+		default:
 			return err
 		}
 	}
