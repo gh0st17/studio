@@ -34,24 +34,12 @@ func (c *CLI) Run(ent bt.Entity) {
 }
 
 func (c *CLI) Login() string {
-	var (
-		login string
-		err   error
-	)
-
-	for {
-		login, err = userinput.PromptString("Введите Ваш логин")
-		if err == nil && login != "" {
-			break
-		}
-	}
-
-	return login
+	return userinput.PromptString("Введите Ваш логин")
 }
 
 func (c *CLI) Registration(login string) (customer bt.Customer) {
-	customer.FirstName, _ = userinput.PromptString("Введите свое имя")
-	customer.LastName, _ = userinput.PromptString("Введите свою фамилию")
+	customer.FirstName = userinput.PromptString("Введите свое имя")
+	customer.LastName = userinput.PromptString("Введите свою фамилию")
 	customer.Login = login
 
 	return customer
@@ -62,7 +50,7 @@ func (c *CLI) Main() (choice string) {
 	prompt := &survey.Select{
 		Message:  "Выберите действие:",
 		Options:  c.opt,
-		PageSize: 4,
+		PageSize: 5,
 	}
 	survey.AskOne(prompt, &choice)
 
@@ -81,44 +69,39 @@ func (c *CLI) DisplayTable(table interface{}) {
 	}
 }
 
-func (c *CLI) displayOrders(o []bt.Order) {
-	if len(o) > 0 {
-		fmt.Print(Orders(o))
-	} else {
+func (c *CLI) displayOrders(orders []bt.Order) {
+	if len(orders) == 0 {
 		fmt.Println("Вы еще не совершали заказов")
 	}
+
+	if c.ent.GetAccessLevel() == bt.CUSTOMER {
+		fmt.Print(customerOrders(orders))
+	} else {
+		fmt.Print(employeeOrders(orders))
+	}
+
 	pause()
 }
 
-func (c *CLI) displayOrderItems(oI []bt.OrderItem) {
-	if len(oI) > 0 {
-		fmt.Print(OrderItems(oI))
+func (c *CLI) displayOrderItems(orderItems []bt.OrderItem) {
+	if len(orderItems) > 0 {
+		fmt.Print(OrderItems(orderItems))
 	} else {
 		fmt.Println("Заказа с таким номером не существует")
 	}
 	pause()
 }
 
-func (c *CLI) displayModels(m []bt.Model) {
-	fmt.Print(Model(m))
+func (c *CLI) displayModels(models []bt.Model) {
+	fmt.Print(Models(models))
 }
 
 func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
 	return userinput.PromptUint(prompt)
 }
 
-func (c *CLI) CancelOrder(id uint) {
-	fmt.Println("Отмена заказа (консольный интерфейс)")
-	pause()
-}
-
 func (c *CLI) CreateOrder() {
 	fmt.Println("Создание заказа через терминал")
-	pause()
-}
-
-func (c *CLI) CompleteOrder(id uint) {
-	fmt.Printf("Выполнение заказа %d через терминал\n", id)
 	pause()
 }
 
@@ -172,22 +155,21 @@ func pause() {
 	}
 }
 
-type Orders []bt.Order
+type customerOrders []bt.Order
 
-func (orders Orders) String() (s string) {
-	var (
-		ctime, rtime string
-	)
+func (orders customerOrders) String() (s string) {
+	var ctime, rtime string
+
 	s = fmt.Sprintf(
 		"  # Статус заказа %9s %19s %19s\n",
 		"Сумма", "Создан", "Выдан",
 	)
 
 	for _, o := range orders {
-		ctime = o.CreateDate.Format(dateFormat)
+		ctime = o.LocalCreateDate().Format(dateFormat)
 
-		if o.ReleaseDate != time.Unix(0, 0) {
-			rtime = o.ReleaseDate.Format(dateFormat)
+		if o.LocalReleaseDate() != time.Unix(0, 0) {
+			rtime = o.LocalReleaseDate().Format(dateFormat)
 		} else {
 			rtime = "---"
 		}
@@ -200,33 +182,68 @@ func (orders Orders) String() (s string) {
 	return s
 }
 
-type (
-	OrderItems []bt.OrderItem
-	Model      []bt.Model
-)
+type employeeOrders []bt.Order
 
-func (ois OrderItems) String() (s string) {
-	var sum float64 = 0.0
+func (orders employeeOrders) String() (s string) {
+	var ctime, rtime string
 
-	for _, oi := range ois {
-		s += Model(oi.Model).String()
-		sum += oi.UnitPrice
+	s = fmt.Sprintf(
+		"  # Статус заказа %9s %19s %19s %s\n",
+		"Сумма", "Создан", "Выдан", "# Клиента",
+	)
+
+	for _, o := range orders {
+		ctime = o.LocalCreateDate().Format(dateFormat)
+
+		if o.LocalReleaseDate() != time.Unix(0, 0) {
+			rtime = o.LocalReleaseDate().Format(dateFormat)
+		} else {
+			rtime = "---"
+		}
+
+		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s %9d\n",
+			o.Id, o.Status, o.TotalPrice, ctime, rtime, o.C_id,
+		)
 	}
-	s += fmt.Sprintln("Общая стоимость заказа: ", sum)
 
 	return s
 }
 
-func (mod Model) String() (s string) {
-	for _, m := range mod {
-		s += fmt.Sprintf("%s (Артикул %d):\n", m.Title, m.Id)
+type (
+	OrderItems []bt.OrderItem
+	Model      bt.Model
+	Models     []bt.Model
+)
 
-		for _, mat := range m.Materials {
-			s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
-				mat.Title, mat.Price, m.MatLeng[m.Id],
-			)
-		}
-		s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", m.Price)
+func (orderItems OrderItems) String() (s string) {
+	var sum float64 = 0.0
+
+	for i, oi := range orderItems {
+		s += fmt.Sprintln("Позиция:", i+1)
+		s += Model(oi.Model).String()
+		sum += oi.UnitPrice
+	}
+	s += fmt.Sprintln("Общая стоимость заказа:", sum)
+
+	return s
+}
+
+func (model Model) String() (s string) {
+	s += fmt.Sprintf("%s (Артикул %d):\n", model.Title, model.Id)
+
+	for _, mat := range model.Materials {
+		s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
+			mat.Title, mat.Price, model.MatLeng[mat.Id],
+		)
+	}
+	s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", model.Price)
+
+	return s
+}
+
+func (models Models) String() (s string) {
+	for _, m := range models {
+		s += Model(m).String()
 	}
 
 	return s

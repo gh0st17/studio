@@ -1,9 +1,8 @@
 package studio
 
 import (
-	"bufio"
+	"fmt"
 	"log"
-	"os"
 	bt "studio/basic_types"
 	db "studio/database"
 	"studio/errtype"
@@ -21,7 +20,7 @@ type Studio struct {
 	models     []bt.Model
 }
 
-func New(ui ui.UI) (_ *Studio, err error) {
+func New(ui ui.UI) (*Studio, error) {
 	s := Studio{
 		ui: ui,
 	}
@@ -29,37 +28,40 @@ func New(ui ui.UI) (_ *Studio, err error) {
 	return &s, nil
 }
 
-func (s *Studio) initTables() (err error) {
-	accLevel := s.ent.GetAccessLevel()
-
+func (s *Studio) updateOrders(accLevel bt.AccessLevel) (err error) {
 	switch accLevel {
 	case bt.CUSTOMER:
-		if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
+		if s.orders, err = s.sDB.FetchOrders(s.ent.GetId()); err != nil {
 			return err
 		}
 	case bt.OPERATOR:
-		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
-			return err
-		}
-		if s.orders, err = s.sDB.FetchOrders(); err != nil {
+		if s.orders, err = s.sDB.FetchOrders(0); err != nil {
 			return err
 		}
 	}
 
-	switch accLevel {
-	case bt.CUSTOMER, bt.OPERATOR:
-		if s.materials, err = s.sDB.FetchMaterials(); err != nil {
-			return err
-		}
-		if s.models, err = s.sDB.FetchModels(); err != nil {
-			return err
-		}
-		if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
-			return err
-		}
+	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func (s *Studio) initTables(accLevel bt.AccessLevel) (err error) {
+	if accLevel == bt.OPERATOR {
+		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
+			return err
+		}
+	}
+
+	if s.materials, err = s.sDB.FetchMaterials(); err != nil {
+		return err
+	}
+	if s.models, err = s.sDB.FetchModels(); err != nil {
+		return err
+	}
+
+	return s.updateOrders(accLevel)
 }
 
 func (s *Studio) Run(dbPath string, reg bool) (err error) {
@@ -67,7 +69,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	login := "user" // s.ui.Login()
+	login := s.ui.Login()
 
 	if reg {
 		customer := s.ui.Registration(login)
@@ -80,7 +82,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		return err
 	}
 
-	if err = s.initTables(); err != nil {
+	if err = s.initTables(s.ent.GetAccessLevel()); err != nil {
 		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
 	}
 
@@ -90,7 +92,7 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 		choice := s.ui.Main()
 		switch choice {
 		case "Создать заказ":
-			s.CreateOrder()
+			err = s.CreateOrder()
 		case "Просмотреть заказы":
 			s.DisplayOrders()
 		case "Просмотреть содержимое заказa":
@@ -98,17 +100,50 @@ func (s *Studio) Run(dbPath string, reg bool) (err error) {
 			s.DisplayOrderItems(id[0])
 		case "Отменить заказ":
 			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			s.CancelOrder(id[0])
-		case "Выполнение заказа":
+			err = s.CancelOrder(id[0])
+		case "Выполнить заказ":
 			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			s.CompleteOrder(id[0])
+			err = s.ProcessOrder(id[0])
+		case "Выдача заказа":
+			id, _ := s.ui.ReadNumbers("Выберите id заказа")
+			err = s.ReleaseOrder(id[0])
 		case "Выход":
 			if err = s.sDB.CloseDB(); err != nil {
 				return err
 			}
 			return nil
 		}
+
+		switch err {
+		case nil:
+			continue
+		case db.ErrNotPending, db.ErrStatusRange:
+			s.ui.Alert(fmt.Sprint(err))
+			err = nil
+		default:
+			return err
+		}
 	}
+}
+
+func (s *Studio) CreateOrder() error {
+	var cartModels []bt.Model
+
+	s.ui.DisplayTable(s.models)
+	ids, _ := s.ui.ReadNumbers("Выберите модели по номеру артикула")
+
+	for _, id := range ids {
+		cartModels = append(cartModels, s.models[id-1])
+	}
+
+	err := s.sDB.CreateOrder(s.ent.GetId(), cartModels)
+	if err != nil {
+		s.ui.Alert("Не удалось создать заказ")
+		log.Fatalf("Не удалось создать заказ: %v\n", err)
+		return nil
+	}
+
+	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
 func (s *Studio) DisplayOrders() {
@@ -119,28 +154,23 @@ func (s *Studio) DisplayOrderItems(id uint) {
 	s.ui.DisplayTable(s.orderItems[id])
 }
 
-func (s *Studio) CancelOrder(id uint) {
-	s.ui.CancelOrder(id)
+func (s *Studio) CancelOrder(id uint) error {
+	if err := s.sDB.SetOrderStatus(id, bt.Canceled); err != nil {
+		return err
+	}
+	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
-func (s *Studio) CreateOrder() {
-	var cartModels []bt.Model
-
-	s.ui.DisplayTable(s.models)
-	ids, _ := s.ui.ReadNumbers("Выберите модель по номеру артикула")
-
-	for _, id := range ids {
-		cartModels = append(cartModels, s.models[id-1])
+func (s *Studio) ProcessOrder(id uint) error {
+	if err := s.sDB.SetOrderStatus(id, bt.Processing); err != nil {
+		return err
 	}
-
-	err := s.sDB.CreateOrder(s.ent.GetId(), cartModels)
-	if err != nil {
-		s.ui.Alert("Не удалось создать заказ")
-		log.Fatalf("Не удалось создать заказ: %v\n", err)
-		bufio.NewReader(os.Stdin).ReadBytes('\n')
-	}
+	return s.updateOrders(s.ent.GetAccessLevel())
 }
 
-func (s *Studio) CompleteOrder(id uint) {
-	s.ui.CompleteOrder(id)
+func (s *Studio) ReleaseOrder(id uint) error {
+	if err := s.sDB.SetOrderStatus(id, bt.Released); err != nil {
+		return err
+	}
+	return s.updateOrders(s.ent.GetAccessLevel())
 }

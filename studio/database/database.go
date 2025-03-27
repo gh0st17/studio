@@ -9,33 +9,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type StudioDB struct {
-	// entity bt.Entity
-	sDB *sql.DB
-}
-
-// Представляет критрии для подстановки в условие
-// SQL запроса
-type whereClause struct {
-	key          string
-	op           string
-	value        any
-	postOperator string
-}
-
-type selectParams struct {
-	cols      string
-	table     string
-	sortcol   string
-	criteries []whereClause
-}
-
-type insertParams struct {
-	table  string
-	cols   string
-	values []string
-}
-
 // Загружает локальную базу данных из файла
 func (db *StudioDB) LoadDB(fileName string) error {
 	var err error
@@ -129,38 +102,52 @@ func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 	return customers, nil
 }
 
-func (db *StudioDB) FetchOrdersByCid(cid uint) ([]bt.Order, error) {
+func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	sp := selectParams{
 		"*", "orders", "id",
-		[]whereClause{{"c_id", "=", fmt.Sprintf("%d", cid), ""}},
+		[]whereClause{},
 	}
 
-	return db.fetchOrders(sp)
-}
+	if cid > 0 {
+		sp.criteries = []whereClause{{"c_id", "=", fmt.Sprint(cid), ""}}
+	}
 
-func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
-	sp := selectParams{"*", "orders", "id", []whereClause{}}
-	return db.fetchOrders(sp)
+	if err = db.fetchTable(sp, &orders); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
 
 func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
-	orderItems := make(map[uint][]bt.OrderItem)
+	type RawOrderItem struct {
+		Id, O_id, Model uint
+		UnitPrice       float64
+	}
 
-	var (
-		rawOrderItems []bt.RawOrderItem
-		orderItemsArr []bt.OrderItem
-	)
+	orderItems := make(map[uint][]bt.OrderItem)
 
 	for _, order := range orders {
 		sp := selectParams{
 			"*", "order_items", "id",
-			[]whereClause{{"o_id", "=", fmt.Sprintf("%d", order.Id), ""}},
+			[]whereClause{{"o_id", "=", fmt.Sprint(order.Id), ""}},
 		}
+		var rawOrderItems []RawOrderItem
 		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
 			return nil, err
 		}
-		orderItemsArr = db.unrawOrdersItems(rawOrderItems, models)
-		orderItems[order.Id] = orderItemsArr
+
+		for _, rawOrderItem := range rawOrderItems {
+			orderItems[order.Id] = append(
+				orderItems[order.Id],
+				bt.OrderItem{
+					Id:        rawOrderItem.Id,
+					O_id:      rawOrderItem.O_id,
+					Model:     models[rawOrderItem.Model-1],
+					UnitPrice: rawOrderItem.UnitPrice,
+				},
+			)
+		}
 	}
 
 	return orderItems, nil
@@ -218,7 +205,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 		"orders",
 		[]whereClause{{
 			"c_id", "=",
-			fmt.Sprintf("%d", cid), "",
+			fmt.Sprint(cid), "",
 		}},
 	); err != nil {
 		tx.Rollback()
@@ -243,5 +230,38 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	}
 
 	tx.Commit()
+	return nil
+}
+
+func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
+	sp := selectParams{
+		"status", "orders", "",
+		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+	var orderStatus bt.OrderStatus
+	if rows, err := db.query(sp); err != nil {
+		return err
+	} else {
+		rows.Next()
+		rows.Scan(&orderStatus)
+		rows.Close()
+	}
+
+	if newStatus == bt.Canceled && orderStatus > 1 {
+		return ErrNotPending
+	} else if newStatus != bt.Canceled && newStatus-orderStatus != 1 {
+		return ErrStatusRange
+	}
+
+	up := updateParams{
+		"orders",
+		map[string]string{"status": fmt.Sprint(int(newStatus))},
+		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+
+	if err := db.update(up); err != nil {
+		return err
+	}
+
 	return nil
 }

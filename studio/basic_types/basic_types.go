@@ -51,27 +51,17 @@ func (e Employee) GetId() uint { return e.Id }
 type OrderStatus uint
 
 const (
-	Pending OrderStatus = iota
+	Pending OrderStatus = iota + 1
 	Processing
 	Released
 	Canceled
 )
 
 func (stat OrderStatus) String() string {
-	return [...]string{"Ожидает", "На исполнении", "Выдан", "Отменен"}[stat]
+	return [...]string{"Ожидает", "На исполнении", "Выдан", "Отменен"}[stat-1]
 }
 
 type Order struct {
-	Id          uint
-	C_id        uint
-	E_id        uint
-	Status      OrderStatus
-	TotalPrice  float64
-	CreateDate  time.Time
-	ReleaseDate time.Time
-}
-
-type RawOrder struct {
 	Id          uint
 	C_id        uint
 	E_id        uint
@@ -81,17 +71,22 @@ type RawOrder struct {
 	ReleaseDate int64
 }
 
+func (o *Order) time(unixSec int64) time.Time {
+	return time.Unix(unixSec, 0)
+}
+
+func (o *Order) LocalCreateDate() time.Time {
+	return o.time(o.CreateDate)
+}
+
+func (o *Order) LocalReleaseDate() time.Time {
+	return o.time(o.ReleaseDate)
+}
+
 type OrderItem struct {
 	Id        uint
 	O_id      uint
-	Model     []Model
-	UnitPrice float64
-}
-
-type RawOrderItem struct {
-	Id        uint
-	O_id      uint
-	Model     uint
+	Model     Model
 	UnitPrice float64
 }
 

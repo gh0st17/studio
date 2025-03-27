@@ -13,33 +13,37 @@ import (
 )
 
 // Обрабатывает пользовательский ввод
-func PromptString(prompt string) (string, error) {
+func PromptString(prompt string) string {
 	fmt.Printf("%s: ", prompt)
 	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		return strings.TrimRight(scanner.Text(), "\r\n"), nil
+	for {
+		if scanner.Scan() {
+			if scanner.Text() == "" {
+				continue
+			} else {
+				return strings.TrimRight(scanner.Text(), "\r\n")
+			}
+		}
 	}
-	return "", ErrInput
 }
 
 // Обрабатывает пользовательский ввод
 func PromptUint(prompt string) (nums []uint, err error) {
-	var s string
-	if s, err = PromptString(prompt); err != nil {
-		return nil, err
-	}
-
 	var u64 uint64
-	numsStr := strings.Split(s, " ")
+
+	numsStr := strings.Split(PromptString(prompt), " ")
 	for _, numStr := range numsStr {
 		if numStr == "" {
 			continue
 		}
 
-		if u64, err = strconv.ParseUint(numStr, 10, 0); err != nil {
-			return nil, err
+		if u64, err = strconv.ParseUint(numStr, 10, 0); err == nil {
+			nums = append(nums, uint(u64))
 		}
-		nums = append(nums, uint(u64))
+	}
+
+	if len(nums) == 0 {
+		return PromptUint(prompt)
 	}
 
 	return nums, nil

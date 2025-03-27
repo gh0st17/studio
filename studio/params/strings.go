@@ -4,7 +4,7 @@ package params
 
 const (
 	versionDesc = "Печать номера версии и выход"
-	versionText = "studio 1.0.0-alpha3\n" +
+	versionText = "studio 1.0.0-beta1\n" +
 		"Copyright (C) 2025\n" +
 		"Лицензия MIT: THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY\n" +
 		"OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO\n" +
@@ -18,9 +18,9 @@ const (
 		"Нет НИКАКИХ ГАРАНТИЙ в пределах действующего законодательства.\n\n" +
 		"Автор: Alexey Sorokin.\n"
 
-	useExample = "--db <путь до архива> --type <тип интерфейса>"
+	useExample = "--db <путь до SQLite файла> --type <тип интерфейса>"
 
-	dbPathDesc        = "Путь к директории для распаковки"
+	dbPathDesc        = "Путь до SQLite файла базы даных"
 	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
 	registrationDesc  = "Регистрация нового клиента для CLI"
 	logDesc           = "Печатать логи"

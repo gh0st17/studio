@@ -2,13 +2,11 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	bt "studio/basic_types"
 	"studio/errtype"
-	"time"
 )
 
 func (db *StudioDB) loginCustomer(login string) (bt.Entity, error) {
@@ -59,39 +57,6 @@ func (db *StudioDB) loginEmployee(login string) (bt.Entity, error) {
 	return ent, nil
 }
 
-func (*StudioDB) unrawOrdersItems(rawOI []bt.RawOrderItem, models []bt.Model) []bt.OrderItem {
-	var orderItems []bt.OrderItem
-	orderItemMap := make(map[uint]*bt.OrderItem) // Храним ссылки на уже добавленные заказы
-
-	modelsMap := make(map[uint]bt.Model)
-	for _, model := range models {
-		modelsMap[model.Id] = model
-	}
-
-	for _, roi := range rawOI {
-		orderItem, exists := orderItemMap[roi.Id]
-		if !exists {
-			orderItem = &bt.OrderItem{
-				Id:        roi.Id,
-				O_id:      roi.O_id,
-				Model:     []bt.Model{}, // Инициализируем пустым срезом
-				UnitPrice: roi.UnitPrice,
-			}
-			orderItemMap[roi.Id] = orderItem
-		}
-
-		if model, found := modelsMap[roi.Model]; found {
-			orderItemMap[roi.Id].Model = append(orderItem.Model, model)
-		}
-	}
-
-	for _, orderItem := range orderItemMap {
-		orderItems = append(orderItems, *orderItem)
-	}
-
-	return orderItems
-}
-
 func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 	rows, err := db.query(sp)
 	if err != nil {
@@ -101,7 +66,7 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 
 	destSlice := reflect.ValueOf(dest)
 	if destSlice.Kind() != reflect.Ptr || destSlice.Elem().Kind() != reflect.Slice {
-		return errors.New("dest must be a pointer to a slice")
+		return errtype.ErrDataBase(errtype.Join(ErrFetchTable, err))
 	}
 
 	elemType := destSlice.Elem().Type().Elem()
@@ -121,7 +86,7 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 			}
 		}
 
-		if err := rows.Scan(scanDest...); err != nil {
+		if err = rows.Scan(scanDest...); err != nil {
 			return errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
 		}
 
@@ -150,8 +115,7 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 		rows, mmRows *sql.Rows
 		m_id         uint
 		title        string
-		leng         float64
-		price        float64
+		leng, price  float64
 		model        bt.Model
 	)
 
@@ -175,7 +139,7 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 		sp = selectParams{
 			"m.id, m.title, mm.leng, m.price",
 			"model_materials mm JOIN materials m ON mm.material_id = m.id", "",
-			[]whereClause{{"mm.model_id", "=", m_id, ""}},
+			[]whereClause{{"mm.model_id", "=", fmt.Sprint(m_id), ""}},
 		}
 		if mmRows, err = db.query(sp); err != nil {
 			return nil, err
@@ -199,94 +163,9 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 	return models, nil
 }
 
-func (db *StudioDB) fetchOrders(sp selectParams) (orders []bt.Order, _ error) {
-	var rawOrders []bt.RawOrder
-	if err := db.fetchTable(sp, &rawOrders); err != nil {
-		return nil, err
-	}
-
-	var order bt.Order
-	for _, rawOrder := range rawOrders {
-		order = bt.Order{
-			Id:          rawOrder.Id,
-			C_id:        rawOrder.C_id,
-			E_id:        rawOrder.E_id,
-			Status:      rawOrder.Status,
-			TotalPrice:  rawOrder.TotalPrice,
-			CreateDate:  time.Unix(rawOrder.CreateDate, 0),
-			ReleaseDate: time.Unix(rawOrder.ReleaseDate, 0),
-		}
-
-		orders = append(orders, order)
-	}
-	return orders, nil
-}
-
-// Общая функция для запросов в базе данных
-func (db *StudioDB) query(sp selectParams) (*sql.Rows, error) {
-	var (
-		err   error
-		query string
-		rows  *sql.Rows
-	)
-
-	query = fmt.Sprintf("SELECT %s FROM %s ", sp.cols, sp.table)
-
-	if len(sp.criteries) > 0 {
-		query += "WHERE "
-		for _, c := range sp.criteries {
-			query += fmt.Sprintf("%s%s%v %s ", c.key, c.op, c.value, c.postOperator)
-		}
-	}
-
-	if sp.sortcol != "" {
-		query += fmt.Sprintf("ORDER BY %s ASC", sp.sortcol)
-	}
-
-	log.Printf("[db.query]: %s", query)
-	if rows, err = db.sDB.Query(query); err != nil {
-		return nil, errtype.ErrDataBase(errtype.Join(ErrQuery, err))
-	}
-
-	return rows, nil
-}
-
-func (db *StudioDB) insert(ip insertParams) error {
-	var (
-		err   error
-		query string
-	)
-
-	query = fmt.Sprintf("INSERT INTO %s (%s) VALUES ", ip.table, ip.cols)
-
-	if len(ip.values) == 0 {
-		return errtype.ErrDataBase(ErrInsert)
-	}
-
-	for i, c := range ip.values {
-		query += fmt.Sprintf("(%s)", c)
-
-		if len(ip.values) != i+1 {
-			query += ","
-		}
-	}
-
-	log.Printf("[db.query]: %s", query)
-	if _, err = db.sDB.Exec(query); err != nil {
-		return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
-	}
-
-	return nil
-}
-
 func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {
-	type Id struct {
-		Id uint
-	}
-
-	sp := selectParams{
-		"id", table, "id", w,
-	}
+	type Id struct{ Id uint }
+	sp := selectParams{"id", table, "id", w}
 
 	var id []Id
 	if err := db.fetchTable(sp, &id); err != nil {

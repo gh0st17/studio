@@ -3,3 +3,4 @@ studio/builds/
 studio/__debug**
 **.DS_Store
 *drawio.bkp
+*.pdf
