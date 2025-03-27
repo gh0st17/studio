@@ -189,7 +189,7 @@ func (orders employeeOrders) String() (s string) {
 
 	s = fmt.Sprintf(
 		"  # Статус заказа %9s %19s %19s %s\n",
-		"Сумма", "Создан", "Выдан", "Клиент #",
+		"Сумма", "Создан", "Выдан", "# Клиента",
 	)
 
 	for _, o := range orders {
@@ -201,8 +201,8 @@ func (orders employeeOrders) String() (s string) {
 			rtime = "---"
 		}
 
-		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s\n",
-			o.Id, o.Status, o.TotalPrice, ctime, rtime,
+		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s %9d\n",
+			o.Id, o.Status, o.TotalPrice, ctime, rtime, o.C_id,
 		)
 	}
 
@@ -233,7 +233,7 @@ func (model Model) String() (s string) {
 
 	for _, mat := range model.Materials {
 		s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
-			mat.Title, mat.Price, model.MatLeng[model.Id],
+			mat.Title, mat.Price, model.MatLeng[mat.Id],
 		)
 	}
 	s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", model.Price)
