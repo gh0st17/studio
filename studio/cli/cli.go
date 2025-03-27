@@ -50,7 +50,7 @@ func (c *CLI) Main() (choice string) {
 	prompt := &survey.Select{
 		Message:  "Выберите действие:",
 		Options:  c.opt,
-		PageSize: 4,
+		PageSize: 5,
 	}
 	survey.AskOne(prompt, &choice)
 
@@ -70,11 +70,16 @@ func (c *CLI) DisplayTable(table interface{}) {
 }
 
 func (c *CLI) displayOrders(orders []bt.Order) {
-	if len(orders) > 0 {
-		fmt.Print(Orders(orders))
-	} else {
+	if len(orders) == 0 {
 		fmt.Println("Вы еще не совершали заказов")
 	}
+
+	if c.ent.GetAccessLevel() == bt.CUSTOMER {
+		fmt.Print(customerOrders(orders))
+	} else {
+		fmt.Print(employeeOrders(orders))
+	}
+
 	pause()
 }
 
@@ -150,15 +155,41 @@ func pause() {
 	}
 }
 
-type Orders []bt.Order
+type customerOrders []bt.Order
 
-func (orders Orders) String() (s string) {
-	var (
-		ctime, rtime string
-	)
+func (orders customerOrders) String() (s string) {
+	var ctime, rtime string
+
 	s = fmt.Sprintf(
 		"  # Статус заказа %9s %19s %19s\n",
 		"Сумма", "Создан", "Выдан",
+	)
+
+	for _, o := range orders {
+		ctime = o.LocalCreateDate().Format(dateFormat)
+
+		if o.LocalReleaseDate() != time.Unix(0, 0) {
+			rtime = o.LocalReleaseDate().Format(dateFormat)
+		} else {
+			rtime = "---"
+		}
+
+		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s\n",
+			o.Id, o.Status, o.TotalPrice, ctime, rtime,
+		)
+	}
+
+	return s
+}
+
+type employeeOrders []bt.Order
+
+func (orders employeeOrders) String() (s string) {
+	var ctime, rtime string
+
+	s = fmt.Sprintf(
+		"  # Статус заказа %9s %19s %19s %s\n",
+		"Сумма", "Создан", "Выдан", "Клиент #",
 	)
 
 	for _, o := range orders {

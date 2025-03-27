@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -67,7 +66,7 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 
 	destSlice := reflect.ValueOf(dest)
 	if destSlice.Kind() != reflect.Ptr || destSlice.Elem().Kind() != reflect.Slice {
-		return errors.New("dest must be a pointer to a slice")
+		return errtype.ErrDataBase(errtype.Join(ErrFetchTable, err))
 	}
 
 	elemType := destSlice.Elem().Type().Elem()
@@ -165,13 +164,8 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 }
 
 func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {
-	type Id struct {
-		Id uint
-	}
-
-	sp := selectParams{
-		"id", table, "id", w,
-	}
+	type Id struct{ Id uint }
+	sp := selectParams{"id", table, "id", w}
 
 	var id []Id
 	if err := db.fetchTable(sp, &id); err != nil {

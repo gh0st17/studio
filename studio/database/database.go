@@ -102,21 +102,15 @@ func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 	return customers, nil
 }
 
-func (db *StudioDB) FetchOrdersByCid(cid uint) (orders []bt.Order, err error) {
+func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	sp := selectParams{
 		"*", "orders", "id",
-		[]whereClause{{"c_id", "=", fmt.Sprintf("%d", cid), ""}},
+		[]whereClause{},
 	}
 
-	if err = db.fetchTable(sp, &orders); err != nil {
-		return nil, err
+	if cid > 0 {
+		sp.criteries = []whereClause{{"c_id", "=", fmt.Sprint(cid), ""}}
 	}
-
-	return orders, nil
-}
-
-func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
-	sp := selectParams{"*", "orders", "id", []whereClause{}}
 
 	if err = db.fetchTable(sp, &orders); err != nil {
 		return nil, err
@@ -127,10 +121,8 @@ func (db *StudioDB) FetchOrders() (orders []bt.Order, err error) {
 
 func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
 	type RawOrderItem struct {
-		Id        uint
-		O_id      uint
-		Model     uint
-		UnitPrice float64
+		Id, O_id, Model uint
+		UnitPrice       float64
 	}
 
 	orderItems := make(map[uint][]bt.OrderItem)
@@ -138,7 +130,7 @@ func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[u
 	for _, order := range orders {
 		sp := selectParams{
 			"*", "order_items", "id",
-			[]whereClause{{"o_id", "=", fmt.Sprintf("%d", order.Id), ""}},
+			[]whereClause{{"o_id", "=", fmt.Sprint(order.Id), ""}},
 		}
 		var rawOrderItems []RawOrderItem
 		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
@@ -213,7 +205,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 		"orders",
 		[]whereClause{{
 			"c_id", "=",
-			fmt.Sprintf("%d", cid), "",
+			fmt.Sprint(cid), "",
 		}},
 	); err != nil {
 		tx.Rollback()

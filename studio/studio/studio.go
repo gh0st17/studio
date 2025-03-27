@@ -31,11 +31,11 @@ func New(ui ui.UI) (*Studio, error) {
 func (s *Studio) updateOrders(accLevel bt.AccessLevel) (err error) {
 	switch accLevel {
 	case bt.CUSTOMER:
-		if s.orders, err = s.sDB.FetchOrdersByCid(s.ent.GetId()); err != nil {
+		if s.orders, err = s.sDB.FetchOrders(s.ent.GetId()); err != nil {
 			return err
 		}
 	case bt.OPERATOR:
-		if s.orders, err = s.sDB.FetchOrders(); err != nil {
+		if s.orders, err = s.sDB.FetchOrders(0); err != nil {
 			return err
 		}
 	}
