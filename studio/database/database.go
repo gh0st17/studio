@@ -43,9 +43,7 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 
 	var accLevel uint
 	if !rows.Next() {
-		return nil, errtype.ErrDataBase(
-			errtype.Join(ErrLogin, err),
-		)
+		return nil, errtype.ErrDataBase(ErrLogin)
 	} else {
 		if err = rows.Scan(&accLevel); err != nil {
 			return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))

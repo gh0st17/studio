@@ -8,6 +8,8 @@ import (
 	"runtime"
 	bt "studio/basic_types"
 	"studio/cli/userinput"
+	db "studio/database"
+	"studio/studio"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -16,21 +18,85 @@ import (
 const dateFormat string = "02.01.2006 15:04:05"
 
 type CLI struct {
-	ent bt.Entity
-	opt []string
+	st       *studio.Studio
+	accLevel bt.AccessLevel
+	userName string
+	opt      []string
 }
 
-func (c *CLI) Run(ent bt.Entity) {
-	c.ent = ent
-	switch c.ent.GetAccessLevel() {
+func New() (c *CLI) {
+	c = &CLI{}
+	c.st = &studio.Studio{}
+
+	return c
+}
+
+func (c *CLI) Run(dbPath string) error {
+	if err := c.st.Run(dbPath); err != nil {
+		return err
+	}
+
+	for {
+		ent, err := c.st.Login(c.Login())
+
+		if err == nil {
+			c.accLevel = ent.GetAccessLevel()
+			c.userName = ent.GetFirstLastName()
+			break
+		} else {
+			fmt.Println(err)
+			continue
+		}
+	}
+
+	switch c.accLevel {
 	case bt.CUSTOMER:
 		c.opt = customerOptions()
 	case bt.OPERATOR:
 		c.opt = operatorOptions()
 	}
 	fmt.Println("Запуск консольного интерфейса...")
-	fmt.Printf("С возвращением, %s!\n", c.ent.GetFirstLastName())
+	fmt.Printf("С возвращением, %s!\n", c.userName)
 	pause()
+
+	var err error
+
+	for {
+		choice := c.Main()
+		switch choice {
+		case "Создать заказ":
+			err = c.CreateOrder()
+		case "Просмотреть заказы":
+			c.displayOrders(c.st.Orders())
+		case "Просмотреть содержимое заказa":
+			id, _ := c.ReadNumbers("Выберите id заказа")
+			c.displayOrderItems(c.st.OrderItems(id[0]))
+		case "Отменить заказ":
+			id, _ := c.ReadNumbers("Выберите id заказа")
+			err = c.st.CancelOrder(id[0])
+		case "Выполнить заказ":
+			id, _ := c.ReadNumbers("Выберите id заказа")
+			err = c.st.ProcessOrder(id[0])
+		case "Выдача заказа":
+			id, _ := c.ReadNumbers("Выберите id заказа")
+			err = c.st.ReleaseOrder(id[0])
+		case "Выход":
+			if err = c.st.Shutdown(); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		switch err {
+		case nil:
+			continue
+		case db.ErrNotPending, db.ErrStatusRange:
+			c.Alert(fmt.Sprint(err))
+			err = nil
+		default:
+			return err
+		}
+	}
 }
 
 func (c *CLI) Login() string {
@@ -69,12 +135,20 @@ func (c *CLI) DisplayTable(table interface{}) {
 	}
 }
 
+func (c *CLI) SetAccessLevel(accLevel bt.AccessLevel) {
+	c.accLevel = accLevel
+}
+
+func (c *CLI) SetUserName(userName string) {
+	c.userName = userName
+}
+
 func (c *CLI) displayOrders(orders []bt.Order) {
 	if len(orders) == 0 {
 		fmt.Println("Вы еще не совершали заказов")
 	}
 
-	if c.ent.GetAccessLevel() == bt.CUSTOMER {
+	if c.accLevel == bt.CUSTOMER {
 		fmt.Print(customerOrders(orders))
 	} else {
 		fmt.Print(employeeOrders(orders))
@@ -100,9 +174,11 @@ func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
 	return userinput.PromptUint(prompt)
 }
 
-func (c *CLI) CreateOrder() {
-	fmt.Println("Создание заказа через терминал")
-	pause()
+func (c *CLI) CreateOrder() (err error) {
+	c.DisplayTable(c.st.Models())
+	ids, _ := c.ReadNumbers("Выберите модели по номеру артикула")
+
+	return c.st.CreateOrder(ids)
 }
 
 func (c *CLI) Alert(msg string) {
