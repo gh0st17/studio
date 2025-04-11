@@ -111,7 +111,7 @@ func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
 			</ul>
 		</body>
 		</html>
-	`, web.sessionStore[cookie.Value].GetFirstLastName())
+	`, web.sessionStore[cookie.Value].FirstLastName())
 }
 
 func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {

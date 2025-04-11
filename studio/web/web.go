@@ -21,19 +21,17 @@ type Web struct {
 	sessionMutex sync.RWMutex
 }
 
-func New() *Web {
-	w := &Web{}
-	w.st = &studio.Studio{}
-	w.sessionStore = make(map[string]bt.Entity)
+func New(dbPath string) (web *Web, err error) {
+	web = &Web{}
+	if web.st, err = studio.New(dbPath); err != nil {
+		return nil, err
+	}
+	web.sessionStore = make(map[string]bt.Entity)
 
-	return w
+	return web, nil
 }
 
-func (w *Web) Run(dbPath string) error {
-	if err := w.st.Run(dbPath); err != nil {
-		return err
-	}
-
+func (w *Web) Run() error {
 	http.HandleFunc("/", w.homeHandler)
 	http.HandleFunc("/login", w.loginHandler)
 	http.HandleFunc("/do_login", w.doLoginHandler)
@@ -92,11 +90,6 @@ func (w *Web) displayOrderItems(orderItems []bt.OrderItem) {
 
 func (w *Web) displayModels(models []bt.Model) {
 	fmt.Println("Рендеринг списка моделей в вебе")
-}
-
-func (w *Web) ReadNumbers(prompt string) ([]uint, error) {
-	fmt.Printf("Отображение формы для ввода чисел: %s\n", prompt)
-	return nil, nil // здесь будет получение чисел из формы
 }
 
 func (w *Web) CreateOrder() {

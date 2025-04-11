@@ -4,6 +4,7 @@ import (
 	"studio/cli"
 	"studio/errtype"
 	"studio/params"
+	"studio/ui"
 	"studio/web"
 )
 
@@ -13,14 +14,28 @@ func main() {
 		errtype.ErrorHandler(err)
 	}
 
+	var ui ui.UI
+
 	switch p.IType {
 	case params.CLI:
-		err = cli.New().Run(p.DBPath)
+		if cli, err := cli.New(p.DBPath); err != nil {
+			errtype.ErrorHandler(err)
+		} else {
+			if p.Reg {
+				login := cli.Login()
+				cli.Registration(login)
+			}
+			ui = cli
+		}
 	case params.Web:
-		err = web.New().Run(p.DBPath)
+		if web, err := web.New(p.DBPath); err != nil {
+			errtype.ErrorHandler(err)
+		} else {
+			ui = web
+		}
 	}
 
-	if err != nil {
+	if err = ui.Run(); err != nil {
 		errtype.ErrorHandler(err)
 	}
 }
