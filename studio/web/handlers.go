@@ -12,7 +12,7 @@ import (
 
 func (web *Web) loginHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie("session_id")
-	if web.isSessionExists(cookie.Value) {
+	if cookie != nil && web.isSessionExists(cookie.Value) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
