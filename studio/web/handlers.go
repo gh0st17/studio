@@ -38,7 +38,7 @@ func (web *Web) doLoginHandler(w http.ResponseWriter, r *http.Request) {
 		entity, err := web.st.Login(login)
 		if err != nil {
 			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
-			log.Println("orders error:", err)
+			log.Println("login error:", err)
 			return
 		}
 
@@ -141,6 +141,32 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 	ent := web.sessionStore[sessionID]
 	web.sessionMutex.RUnlock()
 
+	if r.Method == http.MethodPost {
+		action := r.FormValue("action")
+		orderId := r.FormValue("order_id")
+
+		oId, _ := strconv.ParseUint(orderId, 10, 32)
+
+		err := func() error {
+			switch action {
+			case "process":
+				return web.st.ProcessOrder(ent, uint(oId))
+			case "release":
+				return web.st.ReleaseOrder(ent, uint(oId))
+			case "cancel":
+				return web.st.CancelOrder(ent, uint(oId))
+			default:
+				return nil
+			}
+		}()
+
+		if err != nil {
+			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
+			log.Println("change status error:", err)
+			return
+		}
+	}
+
 	if rawOrders, err := web.st.Orders(ent); err != nil {
 		http.Error(w, "Ошибка просмотра заказов", http.StatusInternalServerError)
 		log.Println("orders error:", err)
@@ -156,7 +182,10 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 			EmployeeName string
 			CreateDate   string
 			ReleaseDate  string
-			IsActive     bool
+			IsPending    bool
+			Released     bool
+			Processed    bool
+			IsCanceled   bool
 		}
 
 		var orders []Order
@@ -175,7 +204,10 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 				EmployeeName: web.st.FullName(rawO.E_id, bt.OPERATOR),
 				CreateDate:   time.Unix(rawO.CreateDate, 0).Format(dateFormat),
 				ReleaseDate:  releaseDate,
-				IsActive:     rawO.Status == bt.Pending,
+				IsPending:    rawO.Status == bt.Pending,
+				Released:     rawO.Status == bt.Released,
+				Processed:    rawO.Status == bt.Processing,
+				IsCanceled:   rawO.Status == bt.Canceled,
 			}
 
 			orders = append(orders, o)

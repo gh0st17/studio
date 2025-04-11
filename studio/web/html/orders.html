@@ -8,7 +8,6 @@
 <body>
   <div class="content-table">
   <h2>Список заказов</h2>
-  <form method="post" action="/order-action">
     <div class="order-table">
     <table>
       <thead>
@@ -18,7 +17,7 @@
           <th>Общая цена</th>
           <th>Дата создания</th>
           <th>Дата выпуска</th>
-          <th>Действия</th>
+          <th>Действие</th>
         </tr>
       </thead>
       <tbody>
@@ -30,14 +29,16 @@
             <td>{{ .CreateDate }}</td>
             <td>{{ .ReleaseDate }}</td>
             <td>
-              <button type="submit" {{ if not .IsActive }}disabled{{ end }} name="action" value="cancel">Отменить</button>
+              <form method="post">
+                <input type="hidden" name="order_id" value="{{ .Id }}">
+                <button type="submit" {{ if not .IsPending }}disabled{{ end }} name="action" value="cancel">Отменить</button>
+              </form>
             </td>
           </tr>
         {{ end }}
       </tbody>
     </table>
     </div>
-  </form>
   <br>
   <center>
     <a href="/">Главное меню</a>

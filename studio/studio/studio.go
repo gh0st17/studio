@@ -117,6 +117,10 @@ func (s *Studio) ProcessOrder(ent bt.Entity, id uint) error {
 		return err
 	}
 
+	if err := s.sDB.SetOperator(ent.GetId(), id); err != nil {
+		return err
+	}
+
 	return nil
 }
 

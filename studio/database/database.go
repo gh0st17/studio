@@ -17,6 +17,8 @@ func (db *StudioDB) LoadDB(fileName string) error {
 		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
 	}
 
+	db.sDB.Exec("PRAGMA journal_mode=WAL;")
+
 	return nil
 }
 
@@ -280,4 +282,18 @@ func (db *StudioDB) FetchFullName(id uint, accessLevel bt.AccessLevel) (name str
 	rows.Scan(&name)
 
 	return name
+}
+
+func (db *StudioDB) SetOperator(eId, oId uint) error {
+	up := updateParams{
+		"orders",
+		map[string]string{"e_id": fmt.Sprint(eId)},
+		[]whereClause{{"id", "=", fmt.Sprint(oId), ""}},
+	}
+
+	if err := db.update(up); err != nil {
+		return err
+	}
+
+	return nil
 }
