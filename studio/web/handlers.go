@@ -1,175 +1,283 @@
 package web
 
 import (
-	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	bt "studio/basic_types"
+	"time"
 
 	"github.com/google/uuid"
 )
 
-// Получаем имя пользователя из сессии
-func (web *Web) getEntityFromSession(r *http.Request) (bt.Entity, bool) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		return nil, false
-	}
-
-	web.sessionMutex.RLock()
-	entity, exists := web.sessionStore[cookie.Value]
-	web.sessionMutex.RUnlock()
-
-	return entity, exists
-}
-
-func (web *Web) homeHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := web.getEntityFromSession(r); !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	} else {
-		http.Redirect(w, r, "/main", http.StatusSeeOther)
-	}
-}
-
 func (web *Web) loginHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprint(w, `
-		<form method="POST" action="/do_login">
-			<input type="text" name="login" placeholder="Введите логин" required />
-			<button type="submit">Log in</button>
-		</form>
-	`)
+	cookie, _ := r.Cookie("session_id")
+	if web.isSessionExists(cookie.Value) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	web.execTemplate("login.html", w, nil)
 }
 
 func (web *Web) doLoginHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "ParseForm() error", http.StatusBadRequest)
-		return
+	if r.Method == http.MethodPost {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "ParseForm() error", http.StatusBadRequest)
+			return
+		}
+		login := r.FormValue("login")
+		if login == "" {
+			http.Error(w, "login is required", http.StatusBadRequest)
+			web.execTemplate("register.html", w, nil)
+			return
+		}
+
+		sessionID := uuid.New().String()
+
+		entity, err := web.st.Login(login)
+		if err != nil {
+			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
+			log.Println("orders error:", err)
+			return
+		}
+
+		web.sessionMutex.Lock()
+		web.sessionStore[sessionID] = entity
+		web.sessionMutex.Unlock()
+
+		http.SetCookie(w, &http.Cookie{
+			Name:  "session_id",
+			Value: sessionID,
+			Path:  "/",
+		})
 	}
-	login := r.FormValue("login")
-	if login == "" {
-		http.Error(w, "login is required", http.StatusBadRequest)
-		return
-	}
 
-	sessionID := uuid.New().String()
-
-	web.sessionMutex.Lock()
-	entity, err := web.st.Login(login)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	web.sessionStore[sessionID] = entity
-	web.sessionMutex.Unlock()
-
-	http.SetCookie(w, &http.Cookie{
-		Name:  "session_id",
-		Value: sessionID,
-		Path:  "/",
-	})
-
-	http.Redirect(w, r, "/main", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (web *Web) registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		firstName := r.FormValue("first_name")
-		lastName := r.FormValue("last_name")
-		_ = r.FormValue("login")
-		http.Redirect(w, r, fmt.Sprintf("/alert?msg=Регистрация+успешна,+%s+%s!&next=/login", firstName, lastName), http.StatusSeeOther)
+		customer := bt.Customer{}
+		customer.FirstName = r.FormValue("first_name")
+		customer.LastName = r.FormValue("last_name")
+		customer.Login = r.FormValue("login")
+
+		if err := web.st.Registration(customer); err != nil {
+			http.Error(w, "Ошибка регистрации", http.StatusInternalServerError)
+			log.Println("registration error:", err)
+		}
+
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
-	fmt.Fprint(w, `
-		<html>
-		<body>
-			<h2>Регистрация</h2>
-			<form method="POST">
-				<label>Имя: <input type="text" name="first_name"></label><br><br>
-				<label>Фамилия: <input type="text" name="last_name"></label><br><br>
-				<label>Логин: <input type="text" name="login"></label><br><br>
-				<input type="submit" value="Зарегистрироваться">
-			</form>
-		</body>
-		</html>
-	`)
+	web.execTemplate("register.html", w, nil)
 }
 
 func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
-
-	fmt.Fprintf(w, `
-		<html>
-		<body>
-			<h2>Главное меню</h2>
-			<p>Добро пожаловать, %s!</p>
-			<ul>
-				<li><a href="/orders">Посмотреть заказы</a></li>
-				<li><a href="/create-order">Создать заказ</a></li>
-				<li><a href="/order-items">Просмотреть содержимое заказа</a></li>
-			</ul>
-		</body>
-		</html>
-	`, web.sessionStore[cookie.Value].FirstLastName())
-}
-
-func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, `
-		<html>
-		<body>
-			<h2>Список заказов</h2>
-			<p>Здесь будет таблица заказов.</p>
-			<a href="/main">Назад в меню</a>
-		</body>
-		</html>
-	`)
-}
-
-func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, `
-		<html>
-		<body>
-			<h2>Содержимое заказа</h2>
-			<p>Здесь будет содержимое выбранного заказа.</p>
-			<a href="/main">Назад в меню</a>
-		</body>
-		</html>
-	`)
-}
-
-func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		http.Redirect(w, r, "/alert?msg=Заказ+успешно+создан!&next=/orders", http.StatusSeeOther)
+		action := r.FormValue("action")
+		cookie, _ := r.Cookie("session_id")
+		sessionId := cookie.Value
+
+		switch action {
+		case "Создать заказ":
+			http.Redirect(w, r, "/create-order", http.StatusSeeOther)
+		case "Просмотреть заказы":
+			http.Redirect(w, r, "/orders", http.StatusSeeOther)
+		case "Выход":
+			web.sessionMutex.Lock()
+			delete(web.sessionStore, sessionId)
+			web.sessionMutex.Unlock()
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		}
+
 		return
 	}
 
-	fmt.Fprint(w, `
-		<html>
-		<body>
-			<h2>Создать заказ</h2>
-			<form method="POST">
-				<label>Описание заказа: <input type="text" name="description"></label><br><br>
-				<input type="submit" value="Создать">
-			</form>
-			<a href="/main">Назад в меню</a>
-		</body>
-		</html>
-	`)
+	cookie, err := r.Cookie("session_id")
+	if err != nil || !web.isSessionExists(cookie.Value) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	web.sessionMutex.RLock()
+	entity := web.sessionStore[cookie.Value]
+	web.sessionMutex.RUnlock()
+	if entity == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	opt := func() []string {
+		if entity.AccessLevel() == bt.CUSTOMER {
+			return customerOptions()
+		} else {
+			return operatorOptions()
+		}
+	}()
+
+	data := struct {
+		UserName  string
+		MenuItems []string
+	}{
+		UserName:  entity.FirstLastName(),
+		MenuItems: opt,
+	}
+
+	web.execTemplate("main.html", w, data)
 }
 
-func (web *Web) alertHandler(w http.ResponseWriter, r *http.Request) {
-	msg := r.URL.Query().Get("msg")
-	next := r.URL.Query().Get("next")
+func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil || !web.isSessionExists(cookie.Value) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 
-	fmt.Fprintf(w, `
-		<html>
-		<body>
-			<script>
-				alert("%s");
-				window.location.href = "%s";
-			</script>
-		</body>
-		</html>
-	`, msg, next)
+	sessionID := cookie.Value
+	web.sessionMutex.RLock()
+	ent := web.sessionStore[sessionID]
+	web.sessionMutex.RUnlock()
+
+	if rawOrders, err := web.st.Orders(ent); err != nil {
+		http.Error(w, "Ошибка просмотра заказов", http.StatusInternalServerError)
+		log.Println("orders error:", err)
+	} else {
+		if len(rawOrders) == 0 {
+			web.execTemplate("alert.html", w, struct{ Msg string }{"Вы еще не сделали ни одного заказа"})
+			return
+		}
+
+		type Order struct {
+			bt.Order
+			CustomerName string
+			EmployeeName string
+			CreateDate   string
+			ReleaseDate  string
+			IsActive     bool
+		}
+
+		var orders []Order
+		for _, rawO := range rawOrders {
+			releaseDate := func() string {
+				if rawO.ReleaseDate != 0 {
+					return time.Unix(rawO.ReleaseDate, 0).Format(dateFormat)
+				} else {
+					return "---"
+				}
+			}()
+
+			o := Order{
+				Order:        rawO,
+				CustomerName: web.st.FullName(rawO.C_id, bt.CUSTOMER),
+				EmployeeName: web.st.FullName(rawO.E_id, bt.OPERATOR),
+				CreateDate:   time.Unix(rawO.CreateDate, 0).Format(dateFormat),
+				ReleaseDate:  releaseDate,
+				IsActive:     rawO.Status == bt.Pending,
+			}
+
+			orders = append(orders, o)
+		}
+
+		web.sessionMutex.RLock()
+		accLevel := web.sessionStore[sessionID].AccessLevel()
+		web.sessionMutex.RUnlock()
+
+		if accLevel == bt.CUSTOMER {
+			web.execTemplate("orders.html", w, struct{ Orders []Order }{orders})
+		} else {
+			web.execTemplate("orders-operator.html", w, struct{ Orders []Order }{orders})
+		}
+	}
+}
+
+func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil || !web.isSessionExists(cookie.Value) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		orderID := r.URL.Query().Get("id")
+
+		if orderID == "" {
+			http.Error(w, "Не указан ID заказа", http.StatusBadRequest)
+			return
+		}
+
+		o_id, err := strconv.ParseUint(orderID, 10, 32)
+		if err != nil {
+			http.Error(w, "ID заказа указан неверно", http.StatusBadRequest)
+			return
+		}
+
+		sessionID := cookie.Value
+		web.sessionMutex.RLock()
+		ent := web.sessionStore[sessionID]
+		web.sessionMutex.RUnlock()
+
+		if orderItems, err := web.st.OrderItems(ent, uint(o_id)); err != nil {
+			http.Error(w, "Ошибка просмотра заказа", http.StatusInternalServerError)
+			log.Println("orders items error:", err)
+		} else {
+			var totalPrice float64
+			for _, item := range orderItems {
+				totalPrice += item.UnitPrice
+			}
+
+			web.execTemplate("order-items.html", w,
+				struct {
+					OrderItems []bt.OrderItem
+					TotalPrice float64
+				}{
+					OrderItems: orderItems,
+					TotalPrice: totalPrice,
+				},
+			)
+		}
+	} else {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil || !web.isSessionExists(cookie.Value) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		sessionID := cookie.Value
+
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Ошибка парсинга формы", http.StatusBadRequest)
+			log.Println("create order parsing error:", err)
+			return
+		}
+
+		modelsIds := r.Form["model_ids"]
+		var modelIds []uint
+		for _, mid := range modelsIds {
+			if id, err := strconv.ParseUint(mid, 10, 32); err == nil {
+				modelIds = append(modelIds, uint(id))
+			}
+		}
+
+		web.sessionMutex.RLock()
+		ent := web.sessionStore[sessionID]
+		web.sessionMutex.RUnlock()
+
+		err := web.st.CreateOrder(ent, modelIds)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Println("create order error:", err)
+		}
+
+		http.Redirect(w, r, "/orders", http.StatusSeeOther)
+	}
+	web.execTemplate("create-order.html", w, web.st.Models())
 }

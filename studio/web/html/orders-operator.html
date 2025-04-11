@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Список заказов</title>
+  <link href="/styles/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <div class="content-table">
+    <h2>Список заказов</h2>
+    <form method="post" action="/order-action">
+      <div class="order-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Номер заказа</th>
+              <th>Клиент</th>
+              <th>Оператор</th>
+              <th>Статус</th>
+              <th>Общая цена</th>
+              <th>Дата создания</th>
+              <th>Дата выпуска</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range .Orders }}
+              <tr>
+                <td><a href="/order-items?id={{ .Id }}">{{ .Id }}</a></td>
+                <td>{{ .CustomerName }}</td>
+                <td>{{ .EmployeeName }}</td>
+                <td>{{ .Status }}</td>
+                <td>{{ .TotalPrice }}</td>
+                <td>{{ .CreateDate }}</td>
+                <td>{{ .ReleaseDate }}</td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </form>
+    <br>
+    <center>
+      <a href="/">Главное меню</a>
+    </center>
+  </div>
+</body>
+</html>

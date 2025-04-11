@@ -132,6 +132,10 @@ func (s *Studio) ReleaseOrder(ent bt.Entity, id uint) error {
 	return nil
 }
 
+func (s *Studio) FullName(id uint, accessLevel bt.AccessLevel) string {
+	return s.sDB.FetchFullName(id, accessLevel)
+}
+
 func (s *Studio) checkOrder(ent bt.Entity, id uint) (bool, error) {
 	orders, err := s.Orders(ent)
 	if err != nil {

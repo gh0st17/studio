@@ -1,0 +1,109 @@
+.order-table table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 16px;
+  border: none;
+  overflow: hidden;
+}
+.order-table th, .order-table  td {
+  padding: 8px;
+  border: 1px solid #dddc;
+  text-align: center;
+  border: none;
+}
+.order-table th {
+  background-color: #6fabe4cc;
+}
+
+.order-table th:first-child, .order-table  td:first-child {
+  border-left: none; /* Убираем левую границу у первых ячеек */
+}
+.order-table th:last-child, .order-table  td:last-child {
+  border-right: none; /* Убираем правую границу у последних ячеек */
+}
+.order-table tr:first-child th {
+  border-top: none; /* Убираем верхнюю границу у первой строки */
+}
+.order-table tr:last-child td {
+  border-bottom: none; /* Убираем нижнюю границу у последней строки */
+}
+.order-table table::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 16px;
+  background: white;
+  opacity: 0.8;
+  z-index: -1;
+}
+
+.order-table tr:nth-child(even) {
+  background-color: #9abeb2cc; /* Цвет для четных строк */
+}
+.order-table tr:nth-child(odd) {
+  background-color: #7a9e92cc; /* Цвет для нечетных строк */
+}
+
+button {
+  width: 150px;
+  text-align: center;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:link, a:visited {
+  color: #000;
+}
+
+a:hover {
+  color: #0056b3;
+}
+
+a:active {
+  color: #004085; 
+}
+
+h2 {
+  text-align: center;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #4a82c2 25%, transparent 25%) -50px 0,
+              linear-gradient(225deg, #2b74c7 25%, transparent 25%) -50px 0,
+              linear-gradient(315deg, #4a82c2 25%, transparent 25%),
+              linear-gradient(45deg, #2b74c7 25%, transparent 25%);
+  background-size: 100px 100px;
+  background-color: #d0f4fa;
+  background-position: top;
+}
+
+.content {
+  padding: 10px;
+  background: rgba(74, 130, 194, 0.8);
+  border-radius: 16px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  position: absolute;
+}
+
+.content-table {
+  padding: 10px;
+  background: rgba(74, 130, 194, 0.8);
+  border-radius: 16px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  position: relative;
+  width: 90vw;
+  max-height: 90%;
+  overflow: scroll;
+}

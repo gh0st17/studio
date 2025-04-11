@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Оформление заказа</title>
+<link href="/styles/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <div class="content-table">
+  <center>
+    <h2>Выберите товары для оформления заказа</h2>
+
+    <form method="post">
+      <div class="order-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Выбрать</th>
+            <th>Название модели</th>
+            <th>Стоимость изготовления</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range . }}
+          <tr>
+            <td><input type="checkbox" name="model_ids" value="{{ .Id }}"></td>
+            <td>{{ .Title }}</td>
+            <td>{{ .Price }}</td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      </div>
+      <br>
+      <button type="submit">Оформить заказ</button>
+    </form>
+    <br>
+    <a href="/">Главное меню</a>
+  </center>
+  </div>
+
+</body>
+</html>

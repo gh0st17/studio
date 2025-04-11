@@ -2,20 +2,21 @@ package web
 
 import (
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
 	bt "studio/basic_types"
 	"studio/studio"
 	"sync"
 )
 
-type Web struct {
-	st       *studio.Studio
-	accLevel bt.AccessLevel
-	userName string
-	opt      []string
+const (
+	TEMPLATES_PATH string = "web/html/"
+	dateFormat     string = "02.01.2006 15:04:05"
+)
 
-	writer  http.ResponseWriter
-	request *http.Request
+type Web struct {
+	st *studio.Studio
 
 	sessionStore map[string]bt.Entity
 	sessionMutex sync.RWMutex
@@ -32,97 +33,63 @@ func New(dbPath string) (web *Web, err error) {
 }
 
 func (w *Web) Run() error {
-	http.HandleFunc("/", w.homeHandler)
+	http.HandleFunc("/", w.mainHandler)
 	http.HandleFunc("/login", w.loginHandler)
 	http.HandleFunc("/do_login", w.doLoginHandler)
 	http.HandleFunc("/register", w.registerHandler)
-	http.HandleFunc("/main", w.mainHandler)
 	http.HandleFunc("/orders", w.ordersHandler)
 	http.HandleFunc("/order-items", w.orderItemsHandler)
 	http.HandleFunc("/create-order", w.createOrderHandler)
-	http.HandleFunc("/alert", w.alertHandler)
+
+	http.Handle("/styles/",
+		http.StripPrefix(
+			"/styles/",
+			http.FileServer(http.Dir(TEMPLATES_PATH+"styles")),
+		),
+	)
 
 	fmt.Println("Запуск веб-интерфейса...")
 	return http.ListenAndServe(":8080", nil)
 }
 
-func (w *Web) Login() string {
-	http.Redirect(w.writer, w.request, "/login", http.StatusSeeOther)
-	return ""
+func inc(a int) int {
+	return a + 1
 }
 
-func (w *Web) Registration(login string) (customer bt.Customer) {
-	// В вебе будет форма регистрации
-	fmt.Println("Отображение формы регистрации на вебе")
-	customer.Login = login
-	customer.FirstName = "" // получить из формы
-	customer.LastName = ""  // получить из формы
-	return customer
-}
+func (*Web) execTemplate(path string, w http.ResponseWriter, data interface{}) {
+	// Создаем новый шаблон и регистрируем функцию инкремента
+	tmpl := template.New(path).Funcs(template.FuncMap{
+		"inc": inc,
+	})
 
-func (w *Web) Main() string {
-	// Веб-страница с основными действиями
-	fmt.Println("Отображение главной страницы с действиями")
-	return "" // выбрать действие из формы / url path / кнопки
-}
+	// Парсим файлы шаблона
+	tmpl, err := tmpl.ParseFiles(TEMPLATES_PATH + path)
+	if err != nil {
+		http.Error(w, "Ошибка загрузки шаблона", http.StatusInternalServerError)
+		log.Println("template error:", err)
+		return
+	}
 
-func (w *Web) DisplayTable(table interface{}) {
-	// Рендер HTML таблицы в веб-интерфейсе
-	switch data := table.(type) {
-	case []bt.Order:
-		w.displayOrders(data)
-	case []bt.OrderItem:
-		w.displayOrderItems(data)
-	case []bt.Model:
-		w.displayModels(data)
-	default:
-		panic("Неизвестный тип таблицы")
+	// Выполняем шаблон с данными
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Ошибка рендера шаблона", http.StatusInternalServerError)
+		log.Println("execute error:", err)
 	}
 }
 
-func (w *Web) displayOrders(orders []bt.Order) {
-	fmt.Println("Рендеринг списка заказов в вебе")
-}
+func (web *Web) isSessionExists(sessionID string) bool {
+	web.sessionMutex.RLock()
+	_, ok := web.sessionStore[sessionID]
+	web.sessionMutex.RUnlock()
 
-func (w *Web) displayOrderItems(orderItems []bt.OrderItem) {
-	fmt.Println("Рендеринг содержимого заказа в вебе")
-}
-
-func (w *Web) displayModels(models []bt.Model) {
-	fmt.Println("Рендеринг списка моделей в вебе")
-}
-
-func (w *Web) CreateOrder() {
-	fmt.Println("Отображение формы создания заказа в вебе")
-}
-
-func (w *Web) Alert(msg string) {
-	http.Redirect(w.writer, w.request,
-		fmt.Sprintf("/alert?msg=%s&next=/main", msg),
-		http.StatusSeeOther,
-	)
-}
-
-func (w *Web) SetAccessLevel(accLevel bt.AccessLevel) {
-	w.accLevel = accLevel
-	switch w.accLevel {
-	case bt.CUSTOMER:
-		w.opt = customerOptions()
-	case bt.OPERATOR:
-		w.opt = operatorOptions()
-	}
-}
-
-func (w *Web) SetUserName(userName string) {
-	w.userName = userName
+	return ok
 }
 
 func customerOptions() []string {
 	return []string{
 		"Создать заказ",
 		"Просмотреть заказы",
-		"Просмотреть содержимое заказa",
-		"Отменить заказ",
 		"Выход",
 	}
 }
@@ -130,9 +97,6 @@ func customerOptions() []string {
 func operatorOptions() []string {
 	return []string{
 		"Просмотреть заказы",
-		"Просмотреть содержимое заказa",
-		"Выполнить заказ",
-		"Выдача заказа",
 		"Выход",
 	}
 }

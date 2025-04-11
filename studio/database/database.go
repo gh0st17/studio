@@ -260,3 +260,24 @@ func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
 
 	return nil
 }
+
+func (db *StudioDB) FetchFullName(id uint, accessLevel bt.AccessLevel) (name string) {
+	table := func() string {
+		if accessLevel == bt.OPERATOR {
+			return "employees"
+		} else {
+			return "customers"
+		}
+	}()
+
+	sp := selectParams{
+		"first_name || ' ' || last_name AS full_name", table, "",
+		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+
+	rows, _ := db.query(sp)
+	rows.Next()
+	rows.Scan(&name)
+
+	return name
+}

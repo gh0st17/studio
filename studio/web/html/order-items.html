@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Содержимое заказа</title>
+  <link href="/styles/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <div class="content-table">
+  <h2>Содержимое заказа</h2>
+
+  {{ range $i, $orderItem := .OrderItems }}
+    <h3>Позиция: {{ inc $i }}</h3>
+    <p><strong>{{ .Model.Title }}</strong> (Артикул: {{ .Model.Id }}):</p>
+    <div class="order-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Материал</th>
+          <th>Цена за метр</th>
+          <th>Длина (метры)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $matId, $mat := $orderItem.Model.Materials }}
+          <tr>
+            <td>{{ $mat.Title }}</td>
+            <td>{{ $mat.Price }}</td>
+            <td>{{ index $orderItem.Model.MatLeng $matId }}</td> 
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    </div>
+    <p><strong>Стоимость изготовления: {{ $orderItem.UnitPrice }}</strong></p>
+    <hr>
+  {{ end }}
+
+  <h3>Общая стоимость заказа: {{ .TotalPrice }}</h3>
+  <br>
+  <center>
+    <a href="/">Главное меню</a>
+  </center>
+  </div>
+
+</body>
+</html>
