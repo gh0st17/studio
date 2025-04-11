@@ -64,16 +64,18 @@ func (c *CLI) Run() (err error) {
 			}
 		case "Просмотреть содержимое заказa":
 			id, _ := userinput.PromptUint("Выберите id заказа")
-			c.displayOrderItems(c.st.OrderItems(id[0]))
+			if orderItems, err := c.st.OrderItems(c.ent, id[0]); err == nil {
+				c.displayOrderItems(orderItems)
+			}
 		case "Отменить заказ":
 			id, _ := userinput.PromptUint("Выберите id заказа")
-			err = c.st.CancelOrder(id[0])
+			err = c.st.CancelOrder(c.ent, id[0])
 		case "Выполнить заказ":
 			id, _ := userinput.PromptUint("Выберите id заказа")
-			err = c.st.ProcessOrder(id[0])
+			err = c.st.ProcessOrder(c.ent, id[0])
 		case "Выдача заказа":
 			id, _ := userinput.PromptUint("Выберите id заказа")
-			err = c.st.ReleaseOrder(id[0])
+			err = c.st.ReleaseOrder(c.ent, id[0])
 		case "Выход":
 			if err = c.st.Shutdown(); err != nil {
 				return err
@@ -84,7 +86,7 @@ func (c *CLI) Run() (err error) {
 		switch err {
 		case nil:
 			continue
-		case db.ErrNotPending, db.ErrStatusRange:
+		case db.ErrNotPending, db.ErrStatusRange, studio.ErrPerm:
 			c.alert(fmt.Sprint(err))
 			err = nil
 		default:

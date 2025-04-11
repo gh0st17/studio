@@ -117,35 +117,32 @@ func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	return orders, nil
 }
 
-func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
+func (db *StudioDB) FetchOrderItems(o_id uint, models []bt.Model) ([]bt.OrderItem, error) {
 	type RawOrderItem struct {
 		Id, O_id, Model uint
 		UnitPrice       float64
 	}
 
-	orderItems := make(map[uint][]bt.OrderItem)
+	var orderItems []bt.OrderItem
 
-	for _, order := range orders {
-		sp := selectParams{
-			"*", "order_items", "id",
-			[]whereClause{{"o_id", "=", fmt.Sprint(order.Id), ""}},
-		}
-		var rawOrderItems []RawOrderItem
-		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
-			return nil, err
-		}
+	sp := selectParams{
+		"*", "order_items", "id",
+		[]whereClause{{"o_id", "=", fmt.Sprint(o_id), ""}},
+	}
+	var rawOrderItems []RawOrderItem
+	if err := db.fetchTable(sp, &rawOrderItems); err != nil {
+		return nil, err
+	}
 
-		for _, rawOrderItem := range rawOrderItems {
-			orderItems[order.Id] = append(
-				orderItems[order.Id],
-				bt.OrderItem{
-					Id:        rawOrderItem.Id,
-					O_id:      rawOrderItem.O_id,
-					Model:     models[rawOrderItem.Model-1],
-					UnitPrice: rawOrderItem.UnitPrice,
-				},
-			)
-		}
+	for _, rawOrderItem := range rawOrderItems {
+		orderItems = append(orderItems,
+			bt.OrderItem{
+				Id:        rawOrderItem.Id,
+				O_id:      rawOrderItem.O_id,
+				Model:     models[rawOrderItem.Model-1],
+				UnitPrice: rawOrderItem.UnitPrice,
+			},
+		)
 	}
 
 	return orderItems, nil

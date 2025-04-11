@@ -8,10 +8,9 @@ import (
 )
 
 type Studio struct {
-	sDB        db.StudioDB
-	orderItems map[uint][]bt.OrderItem
-	materials  []bt.Material
-	models     []bt.Model
+	sDB       db.StudioDB
+	materials []bt.Material
+	models    []bt.Model
 }
 
 func (s *Studio) initTables() (err error) {
@@ -85,11 +84,23 @@ func (s *Studio) Orders(ent bt.Entity) ([]bt.Order, error) {
 	}
 }
 
-func (s *Studio) OrderItems(id uint) []bt.OrderItem {
-	return s.orderItems[id]
+func (s *Studio) OrderItems(ent bt.Entity, id uint) ([]bt.OrderItem, error) {
+	if ok, err := s.checkOrder(ent, id); err != nil {
+		return nil, err
+	} else if ok {
+		return s.sDB.FetchOrderItems(id, s.models)
+	} else {
+		return nil, nil
+	}
 }
 
-func (s *Studio) CancelOrder(id uint) error {
+func (s *Studio) CancelOrder(ent bt.Entity, id uint) error {
+	if ok, err := s.checkOrder(ent, id); err != nil {
+		return err
+	} else if !ok {
+		return ErrPerm
+	}
+
 	if err := s.sDB.SetOrderStatus(id, bt.Canceled); err != nil {
 		return err
 	}
@@ -97,7 +108,11 @@ func (s *Studio) CancelOrder(id uint) error {
 	return nil
 }
 
-func (s *Studio) ProcessOrder(id uint) error {
+func (s *Studio) ProcessOrder(ent bt.Entity, id uint) error {
+	if ent.AccessLevel() != bt.OPERATOR {
+		return ErrPerm
+	}
+
 	if err := s.sDB.SetOrderStatus(id, bt.Processing); err != nil {
 		return err
 	}
@@ -105,10 +120,31 @@ func (s *Studio) ProcessOrder(id uint) error {
 	return nil
 }
 
-func (s *Studio) ReleaseOrder(id uint) error {
+func (s *Studio) ReleaseOrder(ent bt.Entity, id uint) error {
+	if ent.AccessLevel() != bt.OPERATOR {
+		return ErrPerm
+	}
+
 	if err := s.sDB.SetOrderStatus(id, bt.Released); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *Studio) checkOrder(ent bt.Entity, id uint) (bool, error) {
+	orders, err := s.Orders(ent)
+	if err != nil {
+		return false, err
+	}
+
+	var ok bool = false
+	for _, o := range orders {
+		if o.Id == id {
+			ok = true
+			break
+		}
+	}
+
+	return ok, nil
 }
