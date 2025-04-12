@@ -119,7 +119,7 @@ func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	return orders, nil
 }
 
-func (db *StudioDB) FetchOrderItems(o_id uint, models []bt.Model) ([]bt.OrderItem, error) {
+func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.OrderItem, error) {
 	type RawOrderItem struct {
 		Id, O_id, Model uint
 		UnitPrice       float64
@@ -141,7 +141,7 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models []bt.Model) ([]bt.OrderIte
 			bt.OrderItem{
 				Id:        rawOrderItem.Id,
 				O_id:      rawOrderItem.O_id,
-				Model:     models[rawOrderItem.Model-1],
+				Model:     models[rawOrderItem.Model],
 				UnitPrice: rawOrderItem.UnitPrice,
 			},
 		)
@@ -150,20 +150,26 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models []bt.Model) ([]bt.OrderIte
 	return orderItems, nil
 }
 
-func (db *StudioDB) FetchMaterials() (materials []bt.Material, err error) {
+func (db *StudioDB) FetchMaterials() (materials map[uint]bt.Material, err error) {
 	sp := selectParams{
 		"*", "materials", "id",
 		[]whereClause{},
 	}
 
-	if err = db.fetchTable(sp, &materials); err != nil {
+	var matSlice []bt.Material
+	if err = db.fetchTable(sp, &matSlice); err != nil {
 		return nil, err
+	}
+
+	materials = make(map[uint]bt.Material)
+	for _, m := range matSlice {
+		materials[m.Id] = m
 	}
 
 	return materials, nil
 }
 
-func (db *StudioDB) FetchModels() (models []bt.Model, err error) {
+func (db *StudioDB) FetchModels() (models map[uint]bt.Model, err error) {
 	return db.fetchModels()
 }
 

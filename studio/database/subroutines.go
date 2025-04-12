@@ -109,7 +109,7 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 	return nil
 }
 
-func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
+func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 	var (
 		sp           selectParams
 		rows, mmRows *sql.Rows
@@ -118,6 +118,7 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 		leng, price  float64
 		model        bt.Model
 	)
+	models = make(map[uint]bt.Model)
 
 	sp = selectParams{"id, title, price", "models", "id", []whereClause{}}
 	if rows, err = db.query(sp); err != nil {
@@ -156,7 +157,7 @@ func (db *StudioDB) fetchModels() (models []bt.Model, err error) {
 			}
 			model.MatLeng[m_id] = leng
 		}
-		models = append(models, model)
+		models[model.Id] = model
 
 	}
 

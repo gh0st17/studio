@@ -49,12 +49,42 @@
 }
 
 button {
-  width: 150px;
-  text-align: center;
+  transition: background-color, border-color 0.3s ease;
+  height: 32px;
+  padding: 0 !important;
+}
+
+button:not(:disabled):hover {
+  background-color: #6fabe4cc;
+  border-color: #0056b3;
+}
+
+input[type="text"]::placeholder {
+  color: #999;
+}
+
+input[type="text"] {
+  height: 24px;
+  padding: 10px;
+}
+
+button {
+  font-weight: bolder;
+}
+
+input[type="text"], button {
+  width: 200px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+  display: block;
+  margin: 10px auto;
 }
 
 a {
   text-decoration: none;
+  transition: color 0.3s ease;
 }
 
 a:link, a:visited {
@@ -107,4 +137,21 @@ body, html {
   width: 90vw;
   max-height: 90%;
   overflow: scroll;
+}
+
+input[type="text"], button {
+  width: 200px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+hr {
+  border: none;
+  height: 3px;
+  background: linear-gradient(to right, transparent 0%, #0056b3 50%, transparent 100%);
+  margin: 20px 0;
+  border-radius: 2px;
 }

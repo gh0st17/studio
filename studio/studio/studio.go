@@ -9,8 +9,8 @@ import (
 
 type Studio struct {
 	sDB       db.StudioDB
-	materials []bt.Material
-	models    []bt.Model
+	materials map[uint]bt.Material
+	models    map[uint]bt.Model
 }
 
 func (s *Studio) initTables() (err error) {
@@ -59,7 +59,7 @@ func (s *Studio) Login(login string) (ent bt.Entity, err error) {
 func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
 	var cartModels []bt.Model
 	for _, id := range ids {
-		cartModels = append(cartModels, s.models[id-1])
+		cartModels = append(cartModels, s.models[id])
 	}
 
 	err := s.sDB.CreateOrder(ent.GetId(), cartModels)
@@ -71,7 +71,7 @@ func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
 	return nil
 }
 
-func (s *Studio) Models() []bt.Model {
+func (s *Studio) Models() map[uint]bt.Model {
 	return s.models
 }
 

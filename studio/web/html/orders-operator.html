@@ -10,13 +10,22 @@
     <h2>Список заказов</h2>
       <div class="order-table">
         <table>
+          <colgroup>
+            <col style="width: 80px;"> <!-- Номер заказа -->
+            <col style="width: 165px;"> <!-- Клиент -->
+            <col style="width: 160px;"> <!-- Оператор -->
+            <col style="width: 160px;"> <!-- Статус -->
+            <col style="width: 120px;"> <!-- Общая цена -->
+            <col style="width: 140px;"> <!-- Дата создания -->
+            <col style="width: 130px;"> <!-- Дата выпуска -->
+          </colgroup>
           <thead>
             <tr>
               <th>Номер заказа</th>
               <th>Клиент</th>
               <th>Оператор</th>
               <th>Статус</th>
-              <th>Общая цена</th>
+              <th>Общая стоимость</th>
               <th>Дата создания</th>
               <th>Дата выпуска</th>
               <th>Действие</th>
@@ -28,7 +37,18 @@
                 <td><a href="/order-items?id={{ .Id }}">{{ .Id }}</a></td>
                 <td>{{ .CustomerName }}</td>
                 <td>{{ .EmployeeName }}</td>
-                <td>{{ .Status }}</td>
+                <td>
+                  {{ if .IsPending }}
+                  ⏳ <!-- ожидание -->
+                  {{ else if .IsCanceled }}
+                  ❌ <!-- отменено -->
+                  {{ else if .Released }}
+                  ✅ <!-- выпущено -->
+                  {{ else }}
+                  🔄 <!-- обработка -->
+                  {{ end }}
+                  {{ .Status }}
+                </td>
                 <td>{{ .TotalPrice }}</td>
                 <td>{{ .CreateDate }}</td>
                 <td>{{ .ReleaseDate }}</td>

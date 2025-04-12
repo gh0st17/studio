@@ -26,22 +26,17 @@ func (web *Web) doLoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "ParseForm() error", http.StatusBadRequest)
 			return
 		}
+
 		login := r.FormValue("login")
-		if login == "" {
-			http.Error(w, "login is required", http.StatusBadRequest)
-			web.execTemplate("register.html", w, nil)
-			return
-		}
-
-		sessionID := uuid.New().String()
-
 		entity, err := web.st.Login(login)
+
 		if err != nil {
 			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
 			log.Println("login error:", err)
 			return
 		}
 
+		sessionID := uuid.New().String()
 		web.sessionMutex.Lock()
 		web.sessionStore[sessionID] = entity
 		web.sessionMutex.Unlock()
