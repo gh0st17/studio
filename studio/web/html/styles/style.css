@@ -75,7 +75,7 @@ button {
 input[type="text"], button {
   width: 200px;
   border: 1px solid #ccc;
-  border-radius: 8px;
+  border-radius: 16px;
   font-size: 16px;
   box-sizing: border-box;
   display: block;
@@ -121,31 +121,21 @@ body, html {
 }
 
 .content {
-  padding: 10px;
-  background: rgba(74, 130, 194, 0.8);
-  border-radius: 16px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   position: absolute;
 }
 
-.content-table {
+.content,.content-table {
   padding: 10px;
   background: rgba(74, 130, 194, 0.8);
-  border-radius: 16px;
+  border-radius: 32px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.content-table {
   position: relative;
   width: 90vw;
   max-height: 90%;
   overflow: scroll;
-}
-
-input[type="text"], button {
-  width: 200px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 16px;
-  box-sizing: border-box;
 }
 
 hr {

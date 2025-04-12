@@ -57,6 +57,10 @@ func (s *Studio) Login(login string) (ent bt.Entity, err error) {
 }
 
 func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
+	if len(ids) == 0 {
+		return errtype.ErrRuntime(ErrEmptyCart)
+	}
+
 	var cartModels []bt.Model
 	for _, id := range ids {
 		cartModels = append(cartModels, s.models[id])

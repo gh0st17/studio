@@ -103,3 +103,9 @@ type Model struct {
 	Materials map[uint]Material
 	MatLeng   map[uint]float64
 }
+
+type Session struct {
+	Uuid       string
+	Login      string
+	ExpireTime uint
+}

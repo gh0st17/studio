@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Оформление заказа</title>
-<link href="/styles/style.css" rel="stylesheet" type="text/css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Оформление заказа</title>
+  <link href="/styles/style.css" rel="stylesheet" type="text/css">
+  <link href="/styles/modal.css" rel="stylesheet" type="text/css">
+  <script src="/scripts/modal.js"></script>
+  <script src="/scripts/create-order.js"></script>
 </head>
 <body>
   <div class="content-table">
@@ -24,20 +28,28 @@
           {{ range . }}
           <tr>
             <td><input type="checkbox" name="model_ids" value="{{ .Id }}"></td>
-            <td>{{ .Title }}</td>
+            <td><a href="#" class="model-link" data-id="{{ .Id }}">{{ .Title }}</a></td>
             <td>{{ .Price }}</td>
           </tr>
           {{ end }}
         </tbody>
       </table>
+
+ <!-- Модальное окно -->
+      <div id="modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h2>Состав модели</h2>
+          <div id="modal-body">Загрузка...</div>
+        </div>
       </div>
       <br>
-      <button type="submit">Оформить заказ</button>
+      <button type="submit" id="submit-button">Оформить заказ</button>
     </form>
     <br>
     <a href="/">Главное меню</a>
   </center>
   </div>
-
+</div>
 </body>
 </html>

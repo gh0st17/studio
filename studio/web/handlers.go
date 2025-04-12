@@ -308,3 +308,27 @@ func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	web.execTemplate("create-order.html", w, web.st.Models())
 }
+
+func (web *Web) viewModelHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil || !web.isSessionExists(cookie.Value) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		modelID := r.URL.Query().Get("id")
+		mid, err := strconv.ParseUint(modelID, 10, 32)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Println("view model error:", err)
+		}
+
+		model := web.st.Models()[uint(mid)]
+
+		web.execTemplate("model.html", w, model)
+		return
+	}
+
+	http.Redirect(w, r, "/create-order.html", http.StatusSeeOther)
+}

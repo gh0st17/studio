@@ -39,12 +39,20 @@ func (w *Web) Run() error {
 	http.HandleFunc("/register", w.registerHandler)
 	http.HandleFunc("/orders", w.ordersHandler)
 	http.HandleFunc("/order-items", w.orderItemsHandler)
+	http.HandleFunc("/model", w.viewModelHandler)
 	http.HandleFunc("/create-order", w.createOrderHandler)
 
 	http.Handle("/styles/",
 		http.StripPrefix(
 			"/styles/",
 			http.FileServer(http.Dir(TEMPLATES_PATH+"styles")),
+		),
+	)
+
+	http.Handle("/scripts/",
+		http.StripPrefix(
+			"/scripts/",
+			http.FileServer(http.Dir(TEMPLATES_PATH+"scripts")),
 		),
 	)
 
