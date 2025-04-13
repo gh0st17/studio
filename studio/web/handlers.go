@@ -90,7 +90,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		}()
 
 		if err != nil {
-			c.HTML(http.StatusOK, "alert.html", gin.H{"Msg": err.Error()})
+			c.HTML(http.StatusInternalServerError, "alert.html", gin.H{"Msg": err.Error()})
 			log.Println("change status error:", err)
 			return
 		}
@@ -98,7 +98,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 
 	rawOrders, err := web.st.Orders(entity)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Ошибка просмотра заказов")
+		c.HTML(http.StatusInternalServerError, "alert.html", gin.H{"Msg": err.Error()})
 		log.Println("orders error:", err)
 		return
 	}
@@ -165,7 +165,7 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 
 		entity := web.entityFromSession(c)
 		if orderItems, err := web.st.OrderItems(entity, uint(o_id)); err != nil {
-			c.String(http.StatusInternalServerError, "Ошибка просмотра заказа")
+			c.HTML(http.StatusForbidden, "alert.html", gin.H{"Msg": err.Error()})
 			log.Println("orders items error:", err)
 		} else {
 			var totalPrice float64

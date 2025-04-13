@@ -104,8 +104,9 @@ func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 
 func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	cols := "o.id, c.first_name || ' ' || c.last_name AS customer_name, "
-	cols += "IFNULL(e.first_name || ' ' || e.last_name, '') AS employee_name, "
-	cols += "o.status, o.total_price, o.create_date, o.release_date"
+	cols += "COALESCE(e.first_name || ' ' || e.last_name, '') AS employee_name, "
+	cols += "o.status, (SELECT SUM(unit_price) FROM order_items WHERE o_id = o.id) AS total_price, "
+	cols += "o.create_date, o.release_date"
 
 	sp := selectParams{
 		cols, "orders o", "o.id",
@@ -182,22 +183,17 @@ func (db *StudioDB) FetchModels() (models map[uint]bt.Model, err error) {
 
 func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	var (
-		ip         insertParams
-		orderPrice float64
-		order_id   uint
-		tx         *sql.Tx
+		ip       insertParams
+		order_id uint
+		tx       *sql.Tx
 	)
-
-	for _, m := range models {
-		orderPrice += m.Price
-	}
 
 	ip = insertParams{
 		"orders",
-		"c_id, total_price",
+		"c_id",
 		[]string{
 			fmt.Sprintf(
-				"%d,%f", cid, orderPrice,
+				"%d", cid,
 			),
 		},
 	}

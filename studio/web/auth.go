@@ -35,7 +35,7 @@ func (web *Web) doLoginHandler(c *gin.Context) {
 		login := c.PostForm("login")
 		_, err := web.st.Login(login)
 		if err != nil {
-			c.HTML(http.StatusOK, "alert.html", gin.H{"Msg": err.Error()})
+			c.HTML(http.StatusInternalServerError, "alert.html", gin.H{"Msg": err.Error()})
 			log.Println("login error:", err)
 			return
 		}

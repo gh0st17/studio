@@ -146,13 +146,11 @@ func (s *Studio) checkOrder(ent bt.Entity, id uint) (bool, error) {
 		return false, err
 	}
 
-	var ok bool = false
 	for _, o := range orders {
 		if o.Id == id {
-			ok = true
-			break
+			return true, nil
 		}
 	}
 
-	return ok, nil
+	return false, ErrOrder404
 }
