@@ -40,7 +40,7 @@ func (orders employeeOrders) String() (s string) {
 
 	s = fmt.Sprintf(
 		"  # Статус заказа %9s %19s %19s %s\n",
-		"Сумма", "Создан", "Выдан", "# Клиента",
+		"Сумма", "Создан", "Выдан", "Имя клиента",
 	)
 
 	for _, o := range orders {

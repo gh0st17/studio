@@ -93,6 +93,7 @@ func (web *Web) checkCookies(c *gin.Context) {
 	if !web.allCookiesExists(c) &&
 		c.Request.URL.Path != "/login" &&
 		c.Request.URL.Path != "/do_login" &&
+		c.Request.URL.Path != "/register" &&
 		c.Request.URL.Path != "/styles/style.css" {
 		c.Redirect(http.StatusSeeOther, "/login")
 		c.Abort()

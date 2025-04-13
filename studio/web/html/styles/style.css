@@ -3,6 +3,7 @@ body, html {
   padding: 0;
   height: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, #4a82c2 25%, transparent 25%) -50px 0,
@@ -26,6 +27,7 @@ body, html {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   overflow: scroll; 
   scrollbar-width: none;
+  margin-bottom: 16px;
 }
 
 .element::-webkit-scrollbar {
@@ -35,7 +37,8 @@ body, html {
 .content-table {
   position: relative;
   width: 90vw;
-  max-height: 90%;
+  max-height: 80%;
+  margin-top: 32px;
 }
 
 .order-table table {
@@ -92,6 +95,15 @@ body, html {
 }
 .order-table tr:nth-child(even) {
   background-color: #7a9e92cc;
+}
+
+.welcome {
+  font-size: larger;
+}
+
+.a-main {
+  padding-bottom: 16px;
+  text-shadow: 0 0 5px rgba(255, 255, 255, .8);
 }
 
 a {
