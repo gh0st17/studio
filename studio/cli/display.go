@@ -17,10 +17,10 @@ func (orders customerOrders) String() (s string) {
 	)
 
 	for _, o := range orders {
-		ctime = o.LocalCreateDate().Format(dateFormat)
+		ctime = o.LocalCreateDate().Format(bt.DateFormat)
 
 		if o.LocalReleaseDate() != time.Unix(0, 0) {
-			rtime = o.LocalReleaseDate().Format(dateFormat)
+			rtime = o.LocalReleaseDate().Format(bt.DateFormat)
 		} else {
 			rtime = "---"
 		}
@@ -44,16 +44,16 @@ func (orders employeeOrders) String() (s string) {
 	)
 
 	for _, o := range orders {
-		ctime = o.LocalCreateDate().Format(dateFormat)
+		ctime = o.LocalCreateDate().Format(bt.DateFormat)
 
 		if o.LocalReleaseDate() != time.Unix(0, 0) {
-			rtime = o.LocalReleaseDate().Format(dateFormat)
+			rtime = o.LocalReleaseDate().Format(bt.DateFormat)
 		} else {
 			rtime = "---"
 		}
 
-		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s %9d\n",
-			o.Id, o.Status, o.TotalPrice, ctime, rtime, o.C_id,
+		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s %s\n",
+			o.Id, o.Status, o.TotalPrice, ctime, rtime, o.CustomerName,
 		)
 	}
 

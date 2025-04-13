@@ -5,74 +5,56 @@ import (
 	"net/http"
 	"strconv"
 	bt "studio/basic_types"
-	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
-func (web *Web) registerHandler(w http.ResponseWriter, r *http.Request) {
-	if web.allCookiesExists(r) {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		customer := bt.Customer{}
-		customer.FirstName = r.FormValue("first_name")
-		customer.LastName = r.FormValue("last_name")
-		customer.Login = r.FormValue("login")
+func (web *Web) registerHandler(c *gin.Context) {
+	if c.Request.Method == http.MethodPost {
+		customer := bt.Customer{
+			FirstName: c.PostForm("first_name"),
+			LastName:  c.PostForm("last_name"),
+			Login:     c.PostForm("login"),
+		}
 
 		if err := web.st.Registration(customer); err != nil {
-			http.Error(w, "Ошибка регистрации", http.StatusInternalServerError)
+			c.String(http.StatusInternalServerError, "Ошибка регистрации")
 			log.Println("registration error:", err)
+			return
 		}
 
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
 
-	web.execTemplate("register.html", w, nil)
+	c.HTML(http.StatusOK, "register.html", nil)
 }
 
-func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
-	if !web.allCookiesExists(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		action := r.FormValue("action")
-		sessionCookie, _ := r.Cookie("session_id")
+func (web *Web) mainHandler(c *gin.Context) {
+	if c.Request.Method == http.MethodPost {
+		action := c.PostForm("action")
+		sessionCookie, _ := c.Cookie("session_id")
 		switch action {
 		case "Создать заказ":
-			http.Redirect(w, r, "/create-order", http.StatusSeeOther)
+			c.Redirect(http.StatusSeeOther, "/create-order")
 		case "Просмотреть заказы":
-			http.Redirect(w, r, "/orders", http.StatusSeeOther)
+			c.Redirect(http.StatusSeeOther, "/orders")
 		case "Выход":
-			web.sessionMutex.Lock()
-			delete(web.sessionStore, sessionCookie.Value)
-			web.sessionMutex.Unlock()
-			c := &http.Cookie{
-				Name:     "session_id",
-				Value:    "",
-				Path:     "/",
-				Expires:  time.Unix(0, 0),
-				HttpOnly: true,
-			}
-			http.SetCookie(w, c)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			web.rdb.Del(web.ctx, "session:"+sessionCookie)
+			c.SetCookie("session_id", "", -1, "/", "", false, true)
+			c.Redirect(http.StatusSeeOther, "/login")
 		}
-
 		return
 	}
 
-	entity := web.entityFromSession(r)
+	entity := web.entityFromSession(c)
 
-	opt := func() []string {
-		if entity.AccessLevel() == bt.CUSTOMER {
-			return customerOptions()
-		} else {
-			return operatorOptions()
-		}
-	}()
+	var opt []string
+	if entity.AccessLevel() == bt.CUSTOMER {
+		opt = customerOptions()
+	} else {
+		opt = operatorOptions()
+	}
 
 	data := struct {
 		UserName  string
@@ -82,20 +64,15 @@ func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
 		MenuItems: opt,
 	}
 
-	web.execTemplate("main.html", w, data)
+	c.HTML(http.StatusOK, "main.html", data)
 }
 
-func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
-	if !web.allCookiesExists(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
+func (web *Web) ordersHandler(c *gin.Context) {
+	entity := web.entityFromSession(c)
 
-	entity := web.entityFromSession(r)
-
-	if r.Method == http.MethodPost {
-		action := r.FormValue("action")
-		orderId := r.FormValue("order_id")
+	if c.Request.Method == http.MethodPost {
+		action := c.PostForm("action")
+		orderId := c.PostForm("order_id")
 
 		oId, _ := strconv.ParseUint(orderId, 10, 32)
 
@@ -113,7 +90,7 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		if err != nil {
-			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
+			c.HTML(http.StatusOK, "alert.html", gin.H{"Msg": err.Error()})
 			log.Println("change status error:", err)
 			return
 		}
@@ -121,83 +98,74 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 
 	rawOrders, err := web.st.Orders(entity)
 	if err != nil {
-		http.Error(w, "Ошибка просмотра заказов", http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "Ошибка просмотра заказов")
 		log.Println("orders error:", err)
 		return
 	}
 
 	if len(rawOrders) == 0 {
-		web.execTemplate("alert.html", w, struct{ Msg string }{"Вы еще не сделали ни одного заказа"})
+		c.HTML(http.StatusOK, "alert.html", gin.H{"Msg": "Вы еще не сделали ни одного заказа"})
 		return
 	}
 
 	type Order struct {
 		bt.Order
-		CustomerName string
-		EmployeeName string
-		CreateDate   string
-		ReleaseDate  string
-		IsPending    bool
-		Released     bool
-		Processed    bool
-		IsCanceled   bool
+		CreateDate  string
+		ReleaseDate string
+		IsPending   bool
+		Released    bool
+		Processed   bool
+		IsCanceled  bool
 	}
 
 	var orders []Order
 	for _, rawO := range rawOrders {
 		releaseDate := func() string {
 			if rawO.ReleaseDate != 0 {
-				return time.Unix(rawO.ReleaseDate, 0).Format(dateFormat)
+				return rawO.LocalReleaseDate().Format(bt.DateFormat)
 			} else {
 				return "---"
 			}
 		}()
 
 		o := Order{
-			Order:        rawO,
-			CustomerName: web.st.FullName(rawO.C_id, bt.CUSTOMER),
-			EmployeeName: web.st.FullName(rawO.E_id, bt.OPERATOR),
-			CreateDate:   time.Unix(rawO.CreateDate, 0).Format(dateFormat),
-			ReleaseDate:  releaseDate,
-			IsPending:    rawO.Status == bt.Pending,
-			Released:     rawO.Status == bt.Released,
-			Processed:    rawO.Status == bt.Processing,
-			IsCanceled:   rawO.Status == bt.Canceled,
+			Order:       rawO,
+			CreateDate:  rawO.LocalCreateDate().Format(bt.DateFormat),
+			ReleaseDate: releaseDate,
+			IsPending:   rawO.Status == bt.Pending,
+			Released:    rawO.Status == bt.Released,
+			Processed:   rawO.Status == bt.Processing,
+			IsCanceled:  rawO.Status == bt.Canceled,
 		}
 
 		orders = append(orders, o)
 	}
 
 	if entity.AccessLevel() == bt.CUSTOMER {
-		web.execTemplate("orders.html", w, struct{ Orders []Order }{orders})
+		c.HTML(http.StatusOK, "orders.html", gin.H{"Orders": orders})
 	} else {
-		web.execTemplate("orders-operator.html", w, struct{ Orders []Order }{orders})
+		c.HTML(http.StatusOK, "orders-operator.html", gin.H{"Orders": orders})
 	}
 }
 
-func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
-	if !web.allCookiesExists(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		orderID := r.URL.Query().Get("id")
+func (web *Web) orderItemsHandler(c *gin.Context) {
+	if c.Request.Method == http.MethodGet {
+		orderID := c.Query("id")
 
 		if orderID == "" {
-			http.Error(w, "Не указан ID заказа", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "Не указан ID заказа")
 			return
 		}
 
 		o_id, err := strconv.ParseUint(orderID, 10, 32)
 		if err != nil {
-			http.Error(w, "ID заказа указан неверно", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "ID заказа указан неверно")
 			return
 		}
 
-		entity := web.entityFromSession(r)
+		entity := web.entityFromSession(c)
 		if orderItems, err := web.st.OrderItems(entity, uint(o_id)); err != nil {
-			http.Error(w, "Ошибка просмотра заказа", http.StatusInternalServerError)
+			c.String(http.StatusInternalServerError, "Ошибка просмотра заказа")
 			log.Println("orders items error:", err)
 		} else {
 			var totalPrice float64
@@ -205,35 +173,25 @@ func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
 				totalPrice += item.UnitPrice
 			}
 
-			web.execTemplate("order-items.html", w,
-				struct {
-					OrderItems []bt.OrderItem
-					TotalPrice float64
-				}{
-					OrderItems: orderItems,
-					TotalPrice: totalPrice,
-				},
-			)
+			c.HTML(http.StatusOK, "order-items.html", gin.H{
+				"OrderItems": orderItems,
+				"TotalPrice": totalPrice,
+			})
 		}
 	} else {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		c.Redirect(http.StatusSeeOther, "/")
 	}
 }
 
-func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
-	if !web.allCookiesExists(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Ошибка парсинга формы", http.StatusBadRequest)
+func (web *Web) createOrderHandler(c *gin.Context) {
+	if c.Request.Method == http.MethodPost {
+		if err := c.Request.ParseForm(); err != nil {
+			c.String(http.StatusBadRequest, "Ошибка парсинга формы")
 			log.Println("create order parsing error:", err)
 			return
 		}
 
-		modelsIds := r.Form["model_ids"]
+		modelsIds := c.PostFormArray("model_ids")
 		var modelIds []uint
 		for _, mid := range modelsIds {
 			if id, err := strconv.ParseUint(mid, 10, 32); err == nil {
@@ -241,37 +199,36 @@ func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		entity := web.entityFromSession(r)
+		entity := web.entityFromSession(c)
 		err := web.st.CreateOrder(entity, modelIds)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			c.String(http.StatusBadRequest, err.Error())
 			log.Println("create order error:", err)
+			return
 		}
 
-		http.Redirect(w, r, "/orders", http.StatusSeeOther)
-	}
-	web.execTemplate("create-order.html", w, web.st.Models())
-}
-
-func (web *Web) viewModelHandler(w http.ResponseWriter, r *http.Request) {
-	if !web.allCookiesExists(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		c.Redirect(http.StatusSeeOther, "/orders")
 		return
 	}
 
-	if r.Method == http.MethodGet {
-		modelID := r.URL.Query().Get("id")
+	c.HTML(http.StatusOK, "create-order.html", web.st.Models())
+}
+
+func (web *Web) viewModelHandler(c *gin.Context) {
+	if c.Request.Method == http.MethodGet {
+		modelID := c.Query("id")
 		mid, err := strconv.ParseUint(modelID, 10, 32)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			c.String(http.StatusBadRequest, err.Error())
 			log.Println("view model error:", err)
+			return
 		}
 
 		model := web.st.Models()[uint(mid)]
 
-		web.execTemplate("model.html", w, model)
+		c.HTML(http.StatusOK, "model.html", model)
 		return
 	}
 
-	http.Redirect(w, r, "/create-order.html", http.StatusSeeOther)
+	c.Redirect(http.StatusSeeOther, "/create-order")
 }

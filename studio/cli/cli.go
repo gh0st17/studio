@@ -14,8 +14,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
-const dateFormat string = "02.01.2006 15:04:05"
-
 type CLI struct {
 	st  *studio.Studio
 	ent bt.Entity

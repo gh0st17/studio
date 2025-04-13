@@ -9,52 +9,24 @@ import (
 	"studio/errtype"
 )
 
-func (db *StudioDB) loginCustomer(login string) (bt.Entity, error) {
-	cols, table := "id, first_name, last_name", "customers"
+func (db *StudioDB) login(login, table string, dest interface{}) (bt.Entity, error) {
 	sp := selectParams{
-		cols, table, "",
+		"*", table, "", []joinClause{},
 		[]whereClause{{"login", "=", "'" + login + "'", ""}},
 	}
-	rows, err := db.query(sp)
+
+	err := db.fetchTable(sp, dest)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	if !rows.Next() {
-		return nil, errtype.ErrDataBase(ErrLogin)
+	slice := reflect.ValueOf(dest).Elem()
+	if slice.Len() == 0 {
+		return nil, fmt.Errorf("no entity found")
 	}
 
-	ent := &bt.Customer{}
-	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName); err != nil {
-		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
-	}
-
-	return ent, nil
-}
-
-func (db *StudioDB) loginEmployee(login string) (bt.Entity, error) {
-	cols, table := "id, first_name, last_name, job_id", "employees"
-	sp := selectParams{
-		cols, table, "",
-		[]whereClause{{"login", "=", "'" + login + "'", ""}},
-	}
-	rows, err := db.query(sp)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		return nil, errtype.ErrDataBase(ErrLogin)
-	}
-
-	ent := &bt.Employee{}
-	if err = rows.Scan(&ent.Id, &ent.FirstName, &ent.LastName, &ent.JobId); err != nil {
-		return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
-	}
-
-	return ent, nil
+	entity := slice.Index(0).Addr().Interface().(bt.Entity)
+	return entity, nil
 }
 
 func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
@@ -66,7 +38,7 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 
 	destSlice := reflect.ValueOf(dest)
 	if destSlice.Kind() != reflect.Ptr || destSlice.Elem().Kind() != reflect.Slice {
-		return errtype.ErrDataBase(errtype.Join(ErrFetchTable, err))
+		return errtype.ErrDataBase(ErrFetchTable)
 	}
 
 	elemType := destSlice.Elem().Type().Elem()
@@ -120,7 +92,9 @@ func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 	)
 	models = make(map[uint]bt.Model)
 
-	sp = selectParams{"id, title, price", "models", "id", []whereClause{}}
+	sp = selectParams{
+		"id, title, price", "models", "id", []joinClause{}, []whereClause{},
+	}
 	if rows, err = db.query(sp); err != nil {
 		return nil, err
 	}
@@ -140,6 +114,7 @@ func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 		sp = selectParams{
 			"m.id, m.title, mm.leng, m.price",
 			"model_materials mm JOIN materials m ON mm.material_id = m.id", "",
+			[]joinClause{},
 			[]whereClause{{"mm.model_id", "=", fmt.Sprint(m_id), ""}},
 		}
 		if mmRows, err = db.query(sp); err != nil {
@@ -166,7 +141,7 @@ func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 
 func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {
 	type Id struct{ Id uint }
-	sp := selectParams{"id", table, "id", w}
+	sp := selectParams{"id", table, "id", []joinClause{}, w}
 
 	var id []Id
 	if err := db.fetchTable(sp, &id); err != nil {

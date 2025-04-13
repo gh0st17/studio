@@ -33,7 +33,7 @@ func (db *StudioDB) CloseDB() error {
 
 func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	sp := selectParams{
-		"accLevel", "users", "",
+		"accLevel", "users", "", []joinClause{},
 		[]whereClause{{"login", "=", "'" + login + "'", ""}},
 	}
 
@@ -53,9 +53,9 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	}
 
 	if bt.AccessLevel(accLevel) == bt.CUSTOMER {
-		return db.loginCustomer(login)
+		return db.login(login, "customers", &[]bt.Customer{})
 	} else {
-		return db.loginEmployee(login)
+		return db.login(login, "employees", &[]bt.Employee{})
 	}
 }
 
@@ -92,7 +92,7 @@ func (db *StudioDB) Registration(customer bt.Customer) error {
 
 func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 	sp := selectParams{
-		"*", "customers", "first_name, last_name", []whereClause{},
+		"*", "customers", "first_name, last_name", []joinClause{}, []whereClause{},
 	}
 
 	if err = db.fetchTable(sp, &customers); err != nil {
@@ -103,8 +103,16 @@ func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
 }
 
 func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
+	cols := "o.id, c.first_name || ' ' || c.last_name AS customer_name, "
+	cols += "IFNULL(e.first_name || ' ' || e.last_name, '') AS employee_name, "
+	cols += "o.status, o.total_price, o.create_date, o.release_date"
+
 	sp := selectParams{
-		"*", "orders", "id",
+		cols, "orders o", "o.id",
+		[]joinClause{
+			{"LEFT JOIN", "customers c", "ON o.c_id = c.id"},
+			{"LEFT JOIN", "employees e", "ON o.e_id = e.id"},
+		},
 		[]whereClause{},
 	}
 
@@ -128,7 +136,7 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.O
 	var orderItems []bt.OrderItem
 
 	sp := selectParams{
-		"*", "order_items", "id",
+		"*", "order_items", "id", []joinClause{},
 		[]whereClause{{"o_id", "=", fmt.Sprint(o_id), ""}},
 	}
 	var rawOrderItems []RawOrderItem
@@ -152,8 +160,7 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.O
 
 func (db *StudioDB) FetchMaterials() (materials map[uint]bt.Material, err error) {
 	sp := selectParams{
-		"*", "materials", "id",
-		[]whereClause{},
+		"*", "materials", "id", []joinClause{}, []whereClause{},
 	}
 
 	var matSlice []bt.Material
@@ -238,7 +245,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 
 func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
 	sp := selectParams{
-		"status", "orders", "",
+		"status", "orders", "", []joinClause{},
 		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
 	}
 	var orderStatus bt.OrderStatus
@@ -267,27 +274,6 @@ func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
 	}
 
 	return nil
-}
-
-func (db *StudioDB) FetchFullName(id uint, accessLevel bt.AccessLevel) (name string) {
-	table := func() string {
-		if accessLevel == bt.OPERATOR {
-			return "employees"
-		} else {
-			return "customers"
-		}
-	}()
-
-	sp := selectParams{
-		"first_name || ' ' || last_name AS full_name", table, "",
-		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
-	}
-
-	rows, _ := db.query(sp)
-	rows.Next()
-	rows.Scan(&name)
-
-	return name
 }
 
 func (db *StudioDB) SetOperator(eId, oId uint) error {

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const DateFormat string = "02.01.2006 15:04:05"
+
 type AccessLevel uint
 
 const (
@@ -16,6 +18,7 @@ type Entity interface {
 	FirstLastName() string
 	AccessLevel() AccessLevel
 	GetId() uint
+	GetLogin() string
 }
 
 type Customer struct {
@@ -31,6 +34,7 @@ func (c *Customer) FirstLastName() string {
 
 func (*Customer) AccessLevel() AccessLevel { return CUSTOMER }
 func (c Customer) GetId() uint             { return c.Id }
+func (c Customer) GetLogin() string        { return c.Login }
 
 type Employee struct {
 	Id        uint
@@ -46,6 +50,7 @@ func (e *Employee) FirstLastName() string {
 
 func (e *Employee) AccessLevel() AccessLevel { return AccessLevel(e.JobId) }
 func (e Employee) GetId() uint               { return e.Id }
+func (e Employee) GetLogin() string          { return e.Login }
 
 type OrderStatus uint
 
@@ -61,13 +66,13 @@ func (stat OrderStatus) String() string {
 }
 
 type Order struct {
-	Id          uint
-	C_id        uint
-	E_id        uint
-	Status      OrderStatus
-	TotalPrice  float64
-	CreateDate  int64
-	ReleaseDate int64
+	Id           uint
+	CustomerName string
+	EmployeeName string
+	Status       OrderStatus
+	TotalPrice   float64
+	CreateDate   int64
+	ReleaseDate  int64
 }
 
 func (o *Order) time(unixSec int64) time.Time {

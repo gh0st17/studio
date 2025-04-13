@@ -24,13 +24,18 @@ body, html {
   background: rgba(74, 130, 194, 0.8);
   border-radius: 32px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  overflow: scroll; 
+  scrollbar-width: none;
+}
+
+.element::-webkit-scrollbar {
+  display: none;
 }
 
 .content-table {
   position: relative;
   width: 90vw;
   max-height: 90%;
-  overflow: scroll;
 }
 
 .order-table table {
@@ -82,10 +87,10 @@ body, html {
   z-index: -1;
 }
 
-.order-table tr:nth-child(even) {
+.order-table tr:nth-child(odd) {
   background-color: #9abeb2cc;
 }
-.order-table tr:nth-child(odd) {
+.order-table tr:nth-child(even) {
   background-color: #7a9e92cc;
 }
 

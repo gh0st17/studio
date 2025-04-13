@@ -24,10 +24,17 @@ type whereClause struct {
 	postOperator string
 }
 
+type joinClause struct {
+	jType string
+	table string
+	on    string
+}
+
 type selectParams struct {
 	cols      string
 	table     string
 	sortcol   string
+	joins     []joinClause
 	criteries []whereClause
 }
 
@@ -46,6 +53,12 @@ type updateParams struct {
 // Общая функция для запросов в базе данных
 func (db *StudioDB) query(sp selectParams) (rows *sql.Rows, err error) {
 	query := fmt.Sprintf("SELECT %s FROM %s ", sp.cols, sp.table)
+
+	if len(sp.joins) > 0 {
+		for _, j := range sp.joins {
+			query += fmt.Sprintf("%s %s %s ", j.jType, j.table, j.on)
+		}
+	}
 
 	if len(sp.criteries) > 0 {
 		query += "WHERE "

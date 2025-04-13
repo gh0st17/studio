@@ -3,63 +3,49 @@ package web
 import (
 	"log"
 	"net/http"
-	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-func (web *Web) loginHandler(w http.ResponseWriter, r *http.Request) {
-	loginCookie, _ := r.Cookie("login")
+func (web *Web) loginHandler(c *gin.Context) {
+	loginCookie, _ := c.Cookie("login")
 	var login string
-	if loginCookie != nil {
-		login = loginCookie.Value
+	if loginCookie != "" {
+		login = loginCookie
 	}
 
-	if web.allCookiesExists(r) {
-		sessionCookie, _ := r.Cookie("session_id")
-		web.addFromCookies(login, sessionCookie.Value)
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+	if web.allCookiesExists(c) {
+		sessionCookie, _ := c.Cookie("session_id")
+		web.addSession(login, sessionCookie)
+		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}
 
-	web.execTemplate("login.html", w, struct{ Login string }{login})
+	c.HTML(http.StatusOK, "login.html", gin.H{"Login": login})
 }
 
-func (web *Web) doLoginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "ParseForm() error", http.StatusBadRequest)
+func (web *Web) doLoginHandler(c *gin.Context) {
+	if c.Request.Method == http.MethodPost {
+		if err := c.Request.ParseForm(); err != nil {
+			c.String(http.StatusBadRequest, "ParseForm() error")
 			return
 		}
 
-		login := r.FormValue("login")
-		entity, err := web.st.Login(login)
-
+		login := c.PostForm("login")
+		_, err := web.st.Login(login)
 		if err != nil {
-			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
+			c.HTML(http.StatusOK, "alert.html", gin.H{"Msg": err.Error()})
 			log.Println("login error:", err)
 			return
 		}
 
 		sessionID := uuid.New().String()
-		web.sessionMutex.Lock()
-		web.sessionStore[sessionID] = entity
-		web.sessionMutex.Unlock()
+		web.addSession(login, sessionID)
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    sessionID,
-			Path:     "/",
-			Expires:  time.Now().Add(time.Hour * 24),
-			HttpOnly: true,
-		})
-		http.SetCookie(w, &http.Cookie{
-			Name:     "login",
-			Value:    login,
-			Path:     "/",
-			HttpOnly: true,
-		})
+		c.SetCookie("session_id", sessionID, 3600*24, "/", "", false, true)
+		c.SetCookie("login", login, 0, "/", "", false, true)
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	c.Redirect(http.StatusSeeOther, "/")
 }
