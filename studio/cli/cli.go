@@ -8,7 +8,8 @@ import (
 	"runtime"
 	bt "studio/basic_types"
 	"studio/cli/userinput"
-	"time"
+	db "studio/database"
+	"studio/studio"
 
 	"github.com/AlecAivazis/survey/v2"
 )
@@ -16,21 +17,82 @@ import (
 const dateFormat string = "02.01.2006 15:04:05"
 
 type CLI struct {
+	st  *studio.Studio
 	ent bt.Entity
 	opt []string
 }
 
-func (c *CLI) Run(ent bt.Entity) {
-	c.ent = ent
-	switch c.ent.GetAccessLevel() {
+func New(dbPath string) (c *CLI, err error) {
+	c = &CLI{}
+	if c.st, err = studio.New(dbPath); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (c *CLI) Run() (err error) {
+	for {
+		c.ent, err = c.st.Login(c.Login())
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		} else {
+			break
+		}
+	}
+
+	switch c.ent.AccessLevel() {
 	case bt.CUSTOMER:
 		c.opt = customerOptions()
 	case bt.OPERATOR:
 		c.opt = operatorOptions()
 	}
 	fmt.Println("Запуск консольного интерфейса...")
-	fmt.Printf("С возвращением, %s!\n", c.ent.GetFirstLastName())
+	fmt.Printf("С возвращением, %s!\n", c.ent.FirstLastName())
 	pause()
+
+	for {
+		choice := c.main()
+		switch choice {
+		case "Создать заказ":
+			err = c.createOrder()
+		case "Просмотреть заказы":
+			if orders, err := c.st.Orders(c.ent); err == nil {
+				c.displayOrders(orders)
+			}
+		case "Просмотреть содержимое заказa":
+			id, _ := userinput.PromptUint("Выберите id заказа")
+			if orderItems, err := c.st.OrderItems(c.ent, id[0]); err == nil {
+				c.displayOrderItems(orderItems)
+			}
+		case "Отменить заказ":
+			id, _ := userinput.PromptUint("Выберите id заказа")
+			err = c.st.CancelOrder(c.ent, id[0])
+		case "Выполнить заказ":
+			id, _ := userinput.PromptUint("Выберите id заказа")
+			err = c.st.ProcessOrder(c.ent, id[0])
+		case "Выдача заказа":
+			id, _ := userinput.PromptUint("Выберите id заказа")
+			err = c.st.ReleaseOrder(c.ent, id[0])
+		case "Выход":
+			if err = c.st.Shutdown(); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		switch err {
+		case nil:
+			continue
+		case db.ErrNotPending, db.ErrStatusRange, studio.ErrPerm:
+			c.alert(fmt.Sprint(err))
+			err = nil
+		default:
+			return err
+		}
+	}
 }
 
 func (c *CLI) Login() string {
@@ -45,7 +107,7 @@ func (c *CLI) Registration(login string) (customer bt.Customer) {
 	return customer
 }
 
-func (c *CLI) Main() (choice string) {
+func (c *CLI) main() (choice string) {
 	clearScreen()
 	prompt := &survey.Select{
 		Message:  "Выберите действие:",
@@ -57,7 +119,7 @@ func (c *CLI) Main() (choice string) {
 	return choice
 }
 
-func (c *CLI) DisplayTable(table interface{}) {
+func (c *CLI) displayTable(table interface{}) {
 	if orders, ok := table.([]bt.Order); ok {
 		c.displayOrders(orders)
 	} else if orderItems, ok := table.([]bt.OrderItem); ok {
@@ -74,7 +136,7 @@ func (c *CLI) displayOrders(orders []bt.Order) {
 		fmt.Println("Вы еще не совершали заказов")
 	}
 
-	if c.ent.GetAccessLevel() == bt.CUSTOMER {
+	if c.ent.AccessLevel() == bt.CUSTOMER {
 		fmt.Print(customerOrders(orders))
 	} else {
 		fmt.Print(employeeOrders(orders))
@@ -96,16 +158,14 @@ func (c *CLI) displayModels(models []bt.Model) {
 	fmt.Print(Models(models))
 }
 
-func (c *CLI) ReadNumbers(prompt string) ([]uint, error) {
-	return userinput.PromptUint(prompt)
+func (c *CLI) createOrder() (err error) {
+	c.displayTable(c.st.Models())
+	ids, _ := userinput.PromptUint("Выберите модели по номеру артикула")
+
+	return c.st.CreateOrder(c.ent, ids)
 }
 
-func (c *CLI) CreateOrder() {
-	fmt.Println("Создание заказа через терминал")
-	pause()
-}
-
-func (c *CLI) Alert(msg string) {
+func (c *CLI) alert(msg string) {
 	fmt.Println(msg)
 	pause()
 }
@@ -153,98 +213,4 @@ func pause() {
 	} else {
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
-}
-
-type customerOrders []bt.Order
-
-func (orders customerOrders) String() (s string) {
-	var ctime, rtime string
-
-	s = fmt.Sprintf(
-		"  # Статус заказа %9s %19s %19s\n",
-		"Сумма", "Создан", "Выдан",
-	)
-
-	for _, o := range orders {
-		ctime = o.LocalCreateDate().Format(dateFormat)
-
-		if o.LocalReleaseDate() != time.Unix(0, 0) {
-			rtime = o.LocalReleaseDate().Format(dateFormat)
-		} else {
-			rtime = "---"
-		}
-
-		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s\n",
-			o.Id, o.Status, o.TotalPrice, ctime, rtime,
-		)
-	}
-
-	return s
-}
-
-type employeeOrders []bt.Order
-
-func (orders employeeOrders) String() (s string) {
-	var ctime, rtime string
-
-	s = fmt.Sprintf(
-		"  # Статус заказа %9s %19s %19s %s\n",
-		"Сумма", "Создан", "Выдан", "# Клиента",
-	)
-
-	for _, o := range orders {
-		ctime = o.LocalCreateDate().Format(dateFormat)
-
-		if o.LocalReleaseDate() != time.Unix(0, 0) {
-			rtime = o.LocalReleaseDate().Format(dateFormat)
-		} else {
-			rtime = "---"
-		}
-
-		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s %9d\n",
-			o.Id, o.Status, o.TotalPrice, ctime, rtime, o.C_id,
-		)
-	}
-
-	return s
-}
-
-type (
-	OrderItems []bt.OrderItem
-	Model      bt.Model
-	Models     []bt.Model
-)
-
-func (orderItems OrderItems) String() (s string) {
-	var sum float64 = 0.0
-
-	for i, oi := range orderItems {
-		s += fmt.Sprintln("Позиция:", i+1)
-		s += Model(oi.Model).String()
-		sum += oi.UnitPrice
-	}
-	s += fmt.Sprintln("Общая стоимость заказа:", sum)
-
-	return s
-}
-
-func (model Model) String() (s string) {
-	s += fmt.Sprintf("%s (Артикул %d):\n", model.Title, model.Id)
-
-	for _, mat := range model.Materials {
-		s += fmt.Sprintf("\t%s стоимостью %2.2f за погонный метр длиной %2.2f метра\n",
-			mat.Title, mat.Price, model.MatLeng[mat.Id],
-		)
-	}
-	s += fmt.Sprintf("\tCтоимость изготовления %2.2f\n\n", model.Price)
-
-	return s
-}
-
-func (models Models) String() (s string) {
-	for _, m := range models {
-		s += Model(m).String()
-	}
-
-	return s
 }

@@ -4,5 +4,6 @@ import "fmt"
 
 var (
 	ErrInitTables = fmt.Errorf("ошибка инициализации таблиц")
-	ErrUpdOrders  = fmt.Errorf("ошибка обновления таблицы заказов")
+	ErrPerm       = fmt.Errorf("недостаточно прав для совершения этого действия")
+	ErrEmptyCart  = fmt.Errorf("не выбрана ни одна модель")
 )

@@ -17,6 +17,8 @@ func (db *StudioDB) LoadDB(fileName string) error {
 		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
 	}
 
+	db.sDB.Exec("PRAGMA journal_mode=WAL;")
+
 	return nil
 }
 
@@ -43,9 +45,7 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 
 	var accLevel uint
 	if !rows.Next() {
-		return nil, errtype.ErrDataBase(
-			errtype.Join(ErrLogin, err),
-		)
+		return nil, errtype.ErrDataBase(ErrLogin)
 	} else {
 		if err = rows.Scan(&accLevel); err != nil {
 			return nil, errtype.ErrDataBase(errtype.Join(ErrReadDB, err))
@@ -119,54 +119,57 @@ func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	return orders, nil
 }
 
-func (db *StudioDB) FetchOrderItems(orders []bt.Order, models []bt.Model) (map[uint][]bt.OrderItem, error) {
+func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.OrderItem, error) {
 	type RawOrderItem struct {
 		Id, O_id, Model uint
 		UnitPrice       float64
 	}
 
-	orderItems := make(map[uint][]bt.OrderItem)
+	var orderItems []bt.OrderItem
 
-	for _, order := range orders {
-		sp := selectParams{
-			"*", "order_items", "id",
-			[]whereClause{{"o_id", "=", fmt.Sprint(order.Id), ""}},
-		}
-		var rawOrderItems []RawOrderItem
-		if err := db.fetchTable(sp, &rawOrderItems); err != nil {
-			return nil, err
-		}
+	sp := selectParams{
+		"*", "order_items", "id",
+		[]whereClause{{"o_id", "=", fmt.Sprint(o_id), ""}},
+	}
+	var rawOrderItems []RawOrderItem
+	if err := db.fetchTable(sp, &rawOrderItems); err != nil {
+		return nil, err
+	}
 
-		for _, rawOrderItem := range rawOrderItems {
-			orderItems[order.Id] = append(
-				orderItems[order.Id],
-				bt.OrderItem{
-					Id:        rawOrderItem.Id,
-					O_id:      rawOrderItem.O_id,
-					Model:     models[rawOrderItem.Model-1],
-					UnitPrice: rawOrderItem.UnitPrice,
-				},
-			)
-		}
+	for _, rawOrderItem := range rawOrderItems {
+		orderItems = append(orderItems,
+			bt.OrderItem{
+				Id:        rawOrderItem.Id,
+				O_id:      rawOrderItem.O_id,
+				Model:     models[rawOrderItem.Model],
+				UnitPrice: rawOrderItem.UnitPrice,
+			},
+		)
 	}
 
 	return orderItems, nil
 }
 
-func (db *StudioDB) FetchMaterials() (materials []bt.Material, err error) {
+func (db *StudioDB) FetchMaterials() (materials map[uint]bt.Material, err error) {
 	sp := selectParams{
 		"*", "materials", "id",
 		[]whereClause{},
 	}
 
-	if err = db.fetchTable(sp, &materials); err != nil {
+	var matSlice []bt.Material
+	if err = db.fetchTable(sp, &matSlice); err != nil {
 		return nil, err
+	}
+
+	materials = make(map[uint]bt.Material)
+	for _, m := range matSlice {
+		materials[m.Id] = m
 	}
 
 	return materials, nil
 }
 
-func (db *StudioDB) FetchModels() (models []bt.Model, err error) {
+func (db *StudioDB) FetchModels() (models map[uint]bt.Model, err error) {
 	return db.fetchModels()
 }
 
@@ -257,6 +260,41 @@ func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
 		"orders",
 		map[string]string{"status": fmt.Sprint(int(newStatus))},
 		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+
+	if err := db.update(up); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *StudioDB) FetchFullName(id uint, accessLevel bt.AccessLevel) (name string) {
+	table := func() string {
+		if accessLevel == bt.OPERATOR {
+			return "employees"
+		} else {
+			return "customers"
+		}
+	}()
+
+	sp := selectParams{
+		"first_name || ' ' || last_name AS full_name", table, "",
+		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
+	}
+
+	rows, _ := db.query(sp)
+	rows.Next()
+	rows.Scan(&name)
+
+	return name
+}
+
+func (db *StudioDB) SetOperator(eId, oId uint) error {
+	up := updateParams{
+		"orders",
+		map[string]string{"e_id": fmt.Sprint(eId)},
+		[]whereClause{{"id", "=", fmt.Sprint(oId), ""}},
 	}
 
 	if err := db.update(up); err != nil {

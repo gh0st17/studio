@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log"
 	"studio/errtype"
+	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type StudioDB struct {
-	// entity bt.Entity
 	sDB *sql.DB
+	mu  sync.Mutex
 }
 
 // Представляет критрии для подстановки в условие
@@ -67,6 +68,9 @@ func (db *StudioDB) query(sp selectParams) (rows *sql.Rows, err error) {
 
 // Общая функция для вставки в базу данных
 func (db *StudioDB) insert(ip insertParams) (err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", ip.table, ip.cols)
 
 	if len(ip.values) == 0 {
@@ -91,6 +95,9 @@ func (db *StudioDB) insert(ip insertParams) (err error) {
 
 // Общая функция для обновления в базе данных
 func (db *StudioDB) update(up updateParams) (err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	query := fmt.Sprintf("UPDATE %s SET ", up.table)
 
 	if len(up.set) == 0 {

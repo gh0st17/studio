@@ -1,59 +1,19 @@
 package studio
 
 import (
-	"fmt"
 	"log"
 	bt "studio/basic_types"
 	db "studio/database"
 	"studio/errtype"
-	"studio/ui"
 )
 
 type Studio struct {
-	ui         ui.UI
-	ent        bt.Entity
-	sDB        db.StudioDB
-	customers  []bt.Customer
-	orders     []bt.Order
-	orderItems map[uint][]bt.OrderItem
-	materials  []bt.Material
-	models     []bt.Model
+	sDB       db.StudioDB
+	materials map[uint]bt.Material
+	models    map[uint]bt.Model
 }
 
-func New(ui ui.UI) (*Studio, error) {
-	s := Studio{
-		ui: ui,
-	}
-
-	return &s, nil
-}
-
-func (s *Studio) updateOrders(accLevel bt.AccessLevel) (err error) {
-	switch accLevel {
-	case bt.CUSTOMER:
-		if s.orders, err = s.sDB.FetchOrders(s.ent.GetId()); err != nil {
-			return err
-		}
-	case bt.OPERATOR:
-		if s.orders, err = s.sDB.FetchOrders(0); err != nil {
-			return err
-		}
-	}
-
-	if s.orderItems, err = s.sDB.FetchOrderItems(s.orders, s.models); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *Studio) initTables(accLevel bt.AccessLevel) (err error) {
-	if accLevel == bt.OPERATOR {
-		if s.customers, err = s.sDB.FetchCustomers(); err != nil {
-			return err
-		}
-	}
-
+func (s *Studio) initTables() (err error) {
 	if s.materials, err = s.sDB.FetchMaterials(); err != nil {
 		return err
 	}
@@ -61,116 +21,142 @@ func (s *Studio) initTables(accLevel bt.AccessLevel) (err error) {
 		return err
 	}
 
-	return s.updateOrders(accLevel)
+	return nil
 }
 
-func (s *Studio) Run(dbPath string, reg bool) (err error) {
-	if err = s.sDB.LoadDB(dbPath); err != nil {
-		return err
+func New(dbPath string) (st *Studio, err error) {
+	st = &Studio{}
+	if err = st.sDB.LoadDB(dbPath); err != nil {
+		return nil, err
 	}
 
-	login := s.ui.Login()
-
-	if reg {
-		customer := s.ui.Registration(login)
-		if err = s.sDB.Registration(customer); err != nil {
-			return err
-		}
+	if err = st.initTables(); err != nil {
+		return nil, errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
 	}
 
-	if s.ent, err = s.sDB.Login(login); err != nil {
-		return err
-	}
-
-	if err = s.initTables(s.ent.GetAccessLevel()); err != nil {
-		return errtype.ErrRuntime(errtype.Join(ErrInitTables, err))
-	}
-
-	s.ui.Run(s.ent)
-
-	for {
-		choice := s.ui.Main()
-		switch choice {
-		case "Создать заказ":
-			err = s.CreateOrder()
-		case "Просмотреть заказы":
-			s.DisplayOrders()
-		case "Просмотреть содержимое заказa":
-			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			s.DisplayOrderItems(id[0])
-		case "Отменить заказ":
-			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			err = s.CancelOrder(id[0])
-		case "Выполнить заказ":
-			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			err = s.ProcessOrder(id[0])
-		case "Выдача заказа":
-			id, _ := s.ui.ReadNumbers("Выберите id заказа")
-			err = s.ReleaseOrder(id[0])
-		case "Выход":
-			if err = s.sDB.CloseDB(); err != nil {
-				return err
-			}
-			return nil
-		}
-
-		switch err {
-		case nil:
-			continue
-		case db.ErrNotPending, db.ErrStatusRange:
-			s.ui.Alert(fmt.Sprint(err))
-			err = nil
-		default:
-			return err
-		}
-	}
+	return st, nil
 }
 
-func (s *Studio) CreateOrder() error {
+func (s *Studio) Shutdown() (err error) {
+	return s.sDB.CloseDB()
+}
+
+func (s *Studio) Registration(customer bt.Customer) (err error) {
+	if err = s.sDB.Registration(customer); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Studio) Login(login string) (ent bt.Entity, err error) {
+	if ent, err = s.sDB.Login(login); err != nil {
+		return nil, err
+	}
+
+	return ent, nil
+}
+
+func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
+	if len(ids) == 0 {
+		return errtype.ErrRuntime(ErrEmptyCart)
+	}
+
 	var cartModels []bt.Model
-
-	s.ui.DisplayTable(s.models)
-	ids, _ := s.ui.ReadNumbers("Выберите модели по номеру артикула")
-
 	for _, id := range ids {
-		cartModels = append(cartModels, s.models[id-1])
+		cartModels = append(cartModels, s.models[id])
 	}
 
-	err := s.sDB.CreateOrder(s.ent.GetId(), cartModels)
+	err := s.sDB.CreateOrder(ent.GetId(), cartModels)
 	if err != nil {
-		s.ui.Alert("Не удалось создать заказ")
 		log.Fatalf("Не удалось создать заказ: %v\n", err)
 		return nil
 	}
 
-	return s.updateOrders(s.ent.GetAccessLevel())
+	return nil
 }
 
-func (s *Studio) DisplayOrders() {
-	s.ui.DisplayTable(s.orders)
+func (s *Studio) Models() map[uint]bt.Model {
+	return s.models
 }
 
-func (s *Studio) DisplayOrderItems(id uint) {
-	s.ui.DisplayTable(s.orderItems[id])
+func (s *Studio) Orders(ent bt.Entity) ([]bt.Order, error) {
+	switch ent.AccessLevel() {
+	case bt.OPERATOR:
+		return s.sDB.FetchOrders(0)
+	default:
+		return s.sDB.FetchOrders(ent.GetId())
+	}
 }
 
-func (s *Studio) CancelOrder(id uint) error {
+func (s *Studio) OrderItems(ent bt.Entity, id uint) ([]bt.OrderItem, error) {
+	if ok, err := s.checkOrder(ent, id); err != nil {
+		return nil, err
+	} else if ok {
+		return s.sDB.FetchOrderItems(id, s.models)
+	} else {
+		return nil, nil
+	}
+}
+
+func (s *Studio) CancelOrder(ent bt.Entity, id uint) error {
+	if ok, err := s.checkOrder(ent, id); err != nil {
+		return err
+	} else if !ok {
+		return ErrPerm
+	}
+
 	if err := s.sDB.SetOrderStatus(id, bt.Canceled); err != nil {
 		return err
 	}
-	return s.updateOrders(s.ent.GetAccessLevel())
+
+	return nil
 }
 
-func (s *Studio) ProcessOrder(id uint) error {
+func (s *Studio) ProcessOrder(ent bt.Entity, id uint) error {
+	if ent.AccessLevel() != bt.OPERATOR {
+		return ErrPerm
+	}
+
 	if err := s.sDB.SetOrderStatus(id, bt.Processing); err != nil {
 		return err
 	}
-	return s.updateOrders(s.ent.GetAccessLevel())
+
+	if err := s.sDB.SetOperator(ent.GetId(), id); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *Studio) ReleaseOrder(id uint) error {
+func (s *Studio) ReleaseOrder(ent bt.Entity, id uint) error {
+	if ent.AccessLevel() != bt.OPERATOR {
+		return ErrPerm
+	}
+
 	if err := s.sDB.SetOrderStatus(id, bt.Released); err != nil {
 		return err
 	}
-	return s.updateOrders(s.ent.GetAccessLevel())
+
+	return nil
+}
+
+func (s *Studio) FullName(id uint, accessLevel bt.AccessLevel) string {
+	return s.sDB.FetchFullName(id, accessLevel)
+}
+
+func (s *Studio) checkOrder(ent bt.Entity, id uint) (bool, error) {
+	orders, err := s.Orders(ent)
+	if err != nil {
+		return false, err
+	}
+
+	var ok bool = false
+	for _, o := range orders {
+		if o.Id == id {
+			ok = true
+			break
+		}
+	}
+
+	return ok, nil
 }

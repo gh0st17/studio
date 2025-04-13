@@ -13,8 +13,8 @@ const (
 )
 
 type Entity interface {
-	GetFirstLastName() string
-	GetAccessLevel() AccessLevel
+	FirstLastName() string
+	AccessLevel() AccessLevel
 	GetId() uint
 }
 
@@ -25,12 +25,12 @@ type Customer struct {
 	Login     string
 }
 
-func (c *Customer) GetFirstLastName() string {
+func (c *Customer) FirstLastName() string {
 	return fmt.Sprint(c.FirstName, " ", c.LastName)
 }
 
-func (*Customer) GetAccessLevel() AccessLevel { return CUSTOMER }
-func (c Customer) GetId() uint                { return c.Id }
+func (*Customer) AccessLevel() AccessLevel { return CUSTOMER }
+func (c Customer) GetId() uint             { return c.Id }
 
 type Employee struct {
 	Id        uint
@@ -40,13 +40,12 @@ type Employee struct {
 	Login     string
 }
 
-func (e *Employee) GetFirstLastName() string {
+func (e *Employee) FirstLastName() string {
 	return fmt.Sprint(e.FirstName, " ", e.LastName)
 }
 
-func (e *Employee) GetAccessLevel() AccessLevel { return AccessLevel(e.JobId) }
-
-func (e Employee) GetId() uint { return e.Id }
+func (e *Employee) AccessLevel() AccessLevel { return AccessLevel(e.JobId) }
+func (e Employee) GetId() uint               { return e.Id }
 
 type OrderStatus uint
 
