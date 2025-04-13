@@ -45,8 +45,7 @@ func (e *Employee) FirstLastName() string {
 }
 
 func (e *Employee) AccessLevel() AccessLevel { return AccessLevel(e.JobId) }
-
-func (e Employee) GetId() uint { return e.Id }
+func (e Employee) GetId() uint               { return e.Id }
 
 type OrderStatus uint
 
@@ -102,10 +101,4 @@ type Model struct {
 	Price     float64
 	Materials map[uint]Material
 	MatLeng   map[uint]float64
-}
-
-type Session struct {
-	Uuid       string
-	Login      string
-	ExpireTime uint
 }

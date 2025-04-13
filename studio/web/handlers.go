@@ -42,9 +42,11 @@ func (web *Web) doLoginHandler(w http.ResponseWriter, r *http.Request) {
 		web.sessionMutex.Unlock()
 
 		http.SetCookie(w, &http.Cookie{
-			Name:  "session_id",
-			Value: sessionID,
-			Path:  "/",
+			Name:     "session_id",
+			Value:    sessionID,
+			Path:     "/",
+			Expires:  time.Now().Add(time.Hour * 24),
+			HttpOnly: true,
 		})
 	}
 
@@ -85,6 +87,14 @@ func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
 			web.sessionMutex.Lock()
 			delete(web.sessionStore, sessionId)
 			web.sessionMutex.Unlock()
+			c := &http.Cookie{
+				Name:     "storage",
+				Value:    "",
+				Path:     "/",
+				Expires:  time.Unix(0, 0),
+				HttpOnly: true,
+			}
+			http.SetCookie(w, c)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 		}
 
@@ -162,61 +172,63 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if rawOrders, err := web.st.Orders(ent); err != nil {
+	rawOrders, err := web.st.Orders(ent)
+	if err != nil {
 		http.Error(w, "Ошибка просмотра заказов", http.StatusInternalServerError)
 		log.Println("orders error:", err)
-	} else {
-		if len(rawOrders) == 0 {
-			web.execTemplate("alert.html", w, struct{ Msg string }{"Вы еще не сделали ни одного заказа"})
-			return
-		}
+		return
+	}
 
-		type Order struct {
-			bt.Order
-			CustomerName string
-			EmployeeName string
-			CreateDate   string
-			ReleaseDate  string
-			IsPending    bool
-			Released     bool
-			Processed    bool
-			IsCanceled   bool
-		}
+	if len(rawOrders) == 0 {
+		web.execTemplate("alert.html", w, struct{ Msg string }{"Вы еще не сделали ни одного заказа"})
+		return
+	}
 
-		var orders []Order
-		for _, rawO := range rawOrders {
-			releaseDate := func() string {
-				if rawO.ReleaseDate != 0 {
-					return time.Unix(rawO.ReleaseDate, 0).Format(dateFormat)
-				} else {
-					return "---"
-				}
-			}()
+	type Order struct {
+		bt.Order
+		CustomerName string
+		EmployeeName string
+		CreateDate   string
+		ReleaseDate  string
+		IsPending    bool
+		Released     bool
+		Processed    bool
+		IsCanceled   bool
+	}
 
-			o := Order{
-				Order:        rawO,
-				CustomerName: web.st.FullName(rawO.C_id, bt.CUSTOMER),
-				EmployeeName: web.st.FullName(rawO.E_id, bt.OPERATOR),
-				CreateDate:   time.Unix(rawO.CreateDate, 0).Format(dateFormat),
-				ReleaseDate:  releaseDate,
-				IsPending:    rawO.Status == bt.Pending,
-				Released:     rawO.Status == bt.Released,
-				Processed:    rawO.Status == bt.Processing,
-				IsCanceled:   rawO.Status == bt.Canceled,
+	var orders []Order
+	for _, rawO := range rawOrders {
+		releaseDate := func() string {
+			if rawO.ReleaseDate != 0 {
+				return time.Unix(rawO.ReleaseDate, 0).Format(dateFormat)
+			} else {
+				return "---"
 			}
+		}()
 
-			orders = append(orders, o)
+		o := Order{
+			Order:        rawO,
+			CustomerName: web.st.FullName(rawO.C_id, bt.CUSTOMER),
+			EmployeeName: web.st.FullName(rawO.E_id, bt.OPERATOR),
+			CreateDate:   time.Unix(rawO.CreateDate, 0).Format(dateFormat),
+			ReleaseDate:  releaseDate,
+			IsPending:    rawO.Status == bt.Pending,
+			Released:     rawO.Status == bt.Released,
+			Processed:    rawO.Status == bt.Processing,
+			IsCanceled:   rawO.Status == bt.Canceled,
 		}
 
-		web.sessionMutex.RLock()
-		accLevel := web.sessionStore[sessionID].AccessLevel()
-		web.sessionMutex.RUnlock()
+		orders = append(orders, o)
+	}
 
-		if accLevel == bt.CUSTOMER {
-			web.execTemplate("orders.html", w, struct{ Orders []Order }{orders})
-		} else {
-			web.execTemplate("orders-operator.html", w, struct{ Orders []Order }{orders})
-		}
+	web.sessionMutex.RLock()
+	accLevel := web.sessionStore[sessionID].AccessLevel()
+	web.sessionMutex.RUnlock()
+
+	if accLevel == bt.CUSTOMER {
+		web.execTemplate("orders.html", w, struct{ Orders []Order }{orders})
+	} else {
+		web.execTemplate("orders-operator.html", w, struct{ Orders []Order }{orders})
 	}
 }
 
