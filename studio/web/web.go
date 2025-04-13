@@ -86,14 +86,6 @@ func (*Web) execTemplate(path string, w http.ResponseWriter, data interface{}) {
 	}
 }
 
-func (web *Web) isSessionExists(sessionID string) bool {
-	web.sessionMutex.RLock()
-	_, ok := web.sessionStore[sessionID]
-	web.sessionMutex.RUnlock()
-
-	return ok
-}
-
 func customerOptions() []string {
 	return []string{
 		"Создать заказ",

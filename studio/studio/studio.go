@@ -140,6 +140,7 @@ func (s *Studio) ReleaseOrder(ent bt.Entity, id uint) error {
 	return nil
 }
 
+// TODO: Это можно сделать более оптимально...
 func (s *Studio) FullName(id uint, accessLevel bt.AccessLevel) string {
 	return s.sDB.FetchFullName(id, accessLevel)
 }

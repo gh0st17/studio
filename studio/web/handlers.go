@@ -6,54 +6,14 @@ import (
 	"strconv"
 	bt "studio/basic_types"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-func (web *Web) loginHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("session_id")
-	if cookie != nil && web.isSessionExists(cookie.Value) {
+func (web *Web) registerHandler(w http.ResponseWriter, r *http.Request) {
+	if web.allCookiesExists(r) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	web.execTemplate("login.html", w, nil)
-}
-
-func (web *Web) doLoginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "ParseForm() error", http.StatusBadRequest)
-			return
-		}
-
-		login := r.FormValue("login")
-		entity, err := web.st.Login(login)
-
-		if err != nil {
-			web.execTemplate("alert.html", w, struct{ Msg string }{err.Error()})
-			log.Println("login error:", err)
-			return
-		}
-
-		sessionID := uuid.New().String()
-		web.sessionMutex.Lock()
-		web.sessionStore[sessionID] = entity
-		web.sessionMutex.Unlock()
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    sessionID,
-			Path:     "/",
-			Expires:  time.Now().Add(time.Hour * 24),
-			HttpOnly: true,
-		})
-	}
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (web *Web) registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		customer := bt.Customer{}
 		customer.FirstName = r.FormValue("first_name")
@@ -73,11 +33,14 @@ func (web *Web) registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
+	if !web.allCookiesExists(r) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	if r.Method == http.MethodPost {
 		action := r.FormValue("action")
-		cookie, _ := r.Cookie("session_id")
-		sessionId := cookie.Value
-
+		sessionCookie, _ := r.Cookie("session_id")
 		switch action {
 		case "Создать заказ":
 			http.Redirect(w, r, "/create-order", http.StatusSeeOther)
@@ -85,10 +48,10 @@ func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/orders", http.StatusSeeOther)
 		case "Выход":
 			web.sessionMutex.Lock()
-			delete(web.sessionStore, sessionId)
+			delete(web.sessionStore, sessionCookie.Value)
 			web.sessionMutex.Unlock()
 			c := &http.Cookie{
-				Name:     "storage",
+				Name:     "session_id",
 				Value:    "",
 				Path:     "/",
 				Expires:  time.Unix(0, 0),
@@ -101,19 +64,7 @@ func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil || !web.isSessionExists(cookie.Value) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	web.sessionMutex.RLock()
-	entity := web.sessionStore[cookie.Value]
-	web.sessionMutex.RUnlock()
-	if entity == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
+	entity := web.entityFromSession(r)
 
 	opt := func() []string {
 		if entity.AccessLevel() == bt.CUSTOMER {
@@ -135,16 +86,12 @@ func (web *Web) mainHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil || !web.isSessionExists(cookie.Value) {
+	if !web.allCookiesExists(r) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
-	sessionID := cookie.Value
-	web.sessionMutex.RLock()
-	ent := web.sessionStore[sessionID]
-	web.sessionMutex.RUnlock()
+	entity := web.entityFromSession(r)
 
 	if r.Method == http.MethodPost {
 		action := r.FormValue("action")
@@ -155,11 +102,11 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 		err := func() error {
 			switch action {
 			case "process":
-				return web.st.ProcessOrder(ent, uint(oId))
+				return web.st.ProcessOrder(entity, uint(oId))
 			case "release":
-				return web.st.ReleaseOrder(ent, uint(oId))
+				return web.st.ReleaseOrder(entity, uint(oId))
 			case "cancel":
-				return web.st.CancelOrder(ent, uint(oId))
+				return web.st.CancelOrder(entity, uint(oId))
 			default:
 				return nil
 			}
@@ -172,7 +119,7 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rawOrders, err := web.st.Orders(ent)
+	rawOrders, err := web.st.Orders(entity)
 	if err != nil {
 		http.Error(w, "Ошибка просмотра заказов", http.StatusInternalServerError)
 		log.Println("orders error:", err)
@@ -221,11 +168,7 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 		orders = append(orders, o)
 	}
 
-	web.sessionMutex.RLock()
-	accLevel := web.sessionStore[sessionID].AccessLevel()
-	web.sessionMutex.RUnlock()
-
-	if accLevel == bt.CUSTOMER {
+	if entity.AccessLevel() == bt.CUSTOMER {
 		web.execTemplate("orders.html", w, struct{ Orders []Order }{orders})
 	} else {
 		web.execTemplate("orders-operator.html", w, struct{ Orders []Order }{orders})
@@ -233,8 +176,7 @@ func (web *Web) ordersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil || !web.isSessionExists(cookie.Value) {
+	if !web.allCookiesExists(r) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -253,12 +195,8 @@ func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sessionID := cookie.Value
-		web.sessionMutex.RLock()
-		ent := web.sessionStore[sessionID]
-		web.sessionMutex.RUnlock()
-
-		if orderItems, err := web.st.OrderItems(ent, uint(o_id)); err != nil {
+		entity := web.entityFromSession(r)
+		if orderItems, err := web.st.OrderItems(entity, uint(o_id)); err != nil {
 			http.Error(w, "Ошибка просмотра заказа", http.StatusInternalServerError)
 			log.Println("orders items error:", err)
 		} else {
@@ -283,15 +221,12 @@ func (web *Web) orderItemsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil || !web.isSessionExists(cookie.Value) {
+	if !web.allCookiesExists(r) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	if r.Method == http.MethodPost {
-		sessionID := cookie.Value
-
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Ошибка парсинга формы", http.StatusBadRequest)
 			log.Println("create order parsing error:", err)
@@ -306,11 +241,8 @@ func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		web.sessionMutex.RLock()
-		ent := web.sessionStore[sessionID]
-		web.sessionMutex.RUnlock()
-
-		err := web.st.CreateOrder(ent, modelIds)
+		entity := web.entityFromSession(r)
+		err := web.st.CreateOrder(entity, modelIds)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Println("create order error:", err)
@@ -322,8 +254,7 @@ func (web *Web) createOrderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (web *Web) viewModelHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil || !web.isSessionExists(cookie.Value) {
+	if !web.allCookiesExists(r) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
