@@ -21,13 +21,13 @@ type Web struct {
 }
 
 type User struct {
-	Id       uint
-	Login    string
-	FullName string
-	AccLevel bt.AccessLevel
+	Id           uint
+	Login        string
+	UserFullName string
+	AccLevel     bt.AccessLevel
 }
 
-func (u *User) FirstLastName() string       { return u.FullName }
+func (u *User) FullName() string            { return u.UserFullName }
 func (u *User) AccessLevel() bt.AccessLevel { return u.AccLevel }
 func (u *User) GetId() uint                 { return u.Id }
 func (u *User) GetLogin() string            { return u.Login }

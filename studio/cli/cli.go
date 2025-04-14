@@ -48,7 +48,7 @@ func (c *CLI) Run() (err error) {
 		c.opt = operatorOptions()
 	}
 	fmt.Println("Запуск консольного интерфейса...")
-	fmt.Printf("С возвращением, %s!\n", c.ent.FirstLastName())
+	fmt.Printf("С возвращением, %s!\n", c.ent.FullName())
 	pause()
 
 	for {

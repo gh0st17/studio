@@ -15,7 +15,7 @@ const (
 )
 
 type Entity interface {
-	FirstLastName() string
+	FullName() string
 	AccessLevel() AccessLevel
 	GetId() uint
 	GetLogin() string
@@ -28,7 +28,7 @@ type Customer struct {
 	Login     string
 }
 
-func (c *Customer) FirstLastName() string {
+func (c *Customer) FullName() string {
 	return fmt.Sprint(c.FirstName, " ", c.LastName)
 }
 
@@ -44,7 +44,7 @@ type Employee struct {
 	Login     string
 }
 
-func (e *Employee) FirstLastName() string {
+func (e *Employee) FullName() string {
 	return fmt.Sprint(e.FirstName, " ", e.LastName)
 }
 

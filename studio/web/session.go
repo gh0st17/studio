@@ -21,7 +21,7 @@ func (web *Web) addSession(login, sessionID string) {
 	err := web.rdb.HSet(web.ctx, "session:"+sessionID, map[string]interface{}{
 		"id":       fmt.Sprint(entity.GetId()),
 		"login":    entity.GetLogin(),
-		"fullname": entity.FirstLastName(),
+		"fullname": entity.FullName(),
 		"acclevel": uint(entity.AccessLevel()),
 	}).Err()
 	if err != nil {
@@ -68,10 +68,10 @@ func (web *Web) entityFromSession(c *gin.Context) (entity bt.Entity) {
 		}
 
 		entity = &User{
-			Id:       uint(id),
-			Login:    result["login"],
-			FullName: result["fullname"],
-			AccLevel: bt.AccessLevel(accessLevel),
+			Id:           uint(id),
+			Login:        result["login"],
+			UserFullName: result["fullname"],
+			AccLevel:     bt.AccessLevel(accessLevel),
 		}
 	}
 

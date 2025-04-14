@@ -60,7 +60,7 @@ func (web *Web) mainHandler(c *gin.Context) {
 		UserName  string
 		MenuItems []string
 	}{
-		UserName:  entity.FirstLastName(),
+		UserName:  entity.FullName(),
 		MenuItems: opt,
 	}
 

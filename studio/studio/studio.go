@@ -13,17 +13,6 @@ type Studio struct {
 	models    map[uint]bt.Model
 }
 
-func (s *Studio) initTables() (err error) {
-	if s.materials, err = s.sDB.FetchMaterials(); err != nil {
-		return err
-	}
-	if s.models, err = s.sDB.FetchModels(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func New(dbPath string) (st *Studio, err error) {
 	st = &Studio{}
 	if err = st.sDB.LoadDB(dbPath); err != nil {
@@ -134,6 +123,17 @@ func (s *Studio) ReleaseOrder(ent bt.Entity, id uint) error {
 	}
 
 	if err := s.sDB.SetOrderStatus(id, bt.Released); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Studio) initTables() (err error) {
+	if s.materials, err = s.sDB.FetchMaterials(); err != nil {
+		return err
+	}
+	if s.models, err = s.sDB.FetchModels(); err != nil {
 		return err
 	}
 
