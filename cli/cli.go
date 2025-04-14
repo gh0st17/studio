@@ -20,9 +20,9 @@ type CLI struct {
 	opt []string
 }
 
-func New(dbPath string) (c *CLI, err error) {
+func New() (c *CLI, err error) {
 	c = &CLI{}
-	if c.st, err = studio.New(dbPath); err != nil {
+	if c.st, err = studio.New(); err != nil {
 		return nil, err
 	}
 

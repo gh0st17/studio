@@ -7,7 +7,7 @@ import (
 	"studio/errtype"
 	"sync"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
 type StudioDB struct {

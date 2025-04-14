@@ -19,10 +19,10 @@ func (web *Web) allCookiesExists(c *gin.Context) bool {
 func (web *Web) addSession(login, sessionID string) {
 	entity, _ := web.st.Login(login)
 	err := web.rdb.HSet(web.ctx, "session:"+sessionID, map[string]interface{}{
-		"id":       fmt.Sprint(entity.GetId()),
-		"login":    entity.GetLogin(),
-		"fullname": entity.FullName(),
-		"acclevel": uint(entity.AccessLevel()),
+		"id":           fmt.Sprint(entity.GetId()),
+		"login":        entity.GetLogin(),
+		"fullname":     entity.FullName(),
+		"access_level": uint(entity.AccessLevel()),
 	}).Err()
 	if err != nil {
 		log.Println("add from cookies error:", err)
@@ -61,7 +61,7 @@ func (web *Web) entityFromSession(c *gin.Context) (entity bt.Entity) {
 			return nil
 		}
 
-		accessLevel, err := strconv.Atoi(result["acclevel"])
+		accessLevel, err := strconv.Atoi(result["access_level"])
 		if err != nil {
 			log.Println("invalid access level:", err)
 			return nil

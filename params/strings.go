@@ -18,9 +18,8 @@ const (
 		"Нет НИКАКИХ ГАРАНТИЙ в пределах действующего законодательства.\n\n" +
 		"Автор: Alexey Sorokin.\n"
 
-	useExample = "--db <путь до SQLite файла> --type <тип интерфейса>"
+	useExample = "--type <тип интерфейса>"
 
-	dbPathDesc        = "Путь до SQLite файла базы даных"
 	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
 	registrationDesc  = "Регистрация нового клиента для CLI"
 	logDesc           = "Печатать логи"

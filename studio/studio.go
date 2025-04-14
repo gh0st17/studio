@@ -13,9 +13,9 @@ type Studio struct {
 	models    map[uint]bt.Model
 }
 
-func New(dbPath string) (st *Studio, err error) {
+func New() (st *Studio, err error) {
 	st = &Studio{}
-	if err = st.sDB.LoadDB(dbPath); err != nil {
+	if err = st.sDB.LoadDB(); err != nil {
 		return nil, err
 	}
 

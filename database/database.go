@@ -6,23 +6,24 @@ import (
 	bt "studio/basic_types"
 	"studio/errtype"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
-// Загружает локальную базу данных из файла
-func (db *StudioDB) LoadDB(fileName string) error {
+// Выполняет подключение к базе данных
+func (db *StudioDB) LoadDB() error {
 	var err error
-	db.sDB, err = sql.Open("sqlite3", fileName)
+	connStr := "host=localhost port=5432 user=studio "
+	connStr += "password=studio dbname=studio "
+	connStr += "sslmode=disable search_path=studio"
+	db.sDB, err = sql.Open("postgres", connStr)
 	if err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
 	}
 
-	db.sDB.Exec("PRAGMA journal_mode=WAL;")
-
 	return nil
 }
 
-// Закрывает базу данных
+// Закрывает подключение к базе данных
 func (db *StudioDB) CloseDB() error {
 	if err := db.sDB.Close(); err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrCloseDB, err))
@@ -33,7 +34,7 @@ func (db *StudioDB) CloseDB() error {
 
 func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	sp := selectParams{
-		"accLevel", "users", "", []joinClause{},
+		"access_level", "users", "", []joinClause{},
 		[]whereClause{{"login", "=", "'" + login + "'", ""}},
 	}
 
@@ -61,8 +62,7 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 
 func (db *StudioDB) Registration(customer bt.Customer) error {
 	ip := insertParams{
-		"users",
-		"login,accLevel",
+		"users", "login,access_level",
 		[]string{
 			fmt.Sprintf("'%s',1", customer.Login),
 		},
@@ -189,8 +189,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	)
 
 	ip = insertParams{
-		"orders",
-		"c_id",
+		"orders", "c_id",
 		[]string{
 			fmt.Sprintf(
 				"%d", cid,
@@ -220,8 +219,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 
 	for _, m := range models {
 		ip = insertParams{
-			"order_items",
-			"o_id, model, unit_price",
+			"order_items", "o_id, model, unit_price",
 			[]string{
 				fmt.Sprintf(
 					"%d,%d,%f", order_id, m.Id, m.Price,

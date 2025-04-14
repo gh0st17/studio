@@ -18,7 +18,7 @@ func main() {
 
 	switch p.IType {
 	case params.CLI:
-		if cli, err := cli.New(p.DBPath); err != nil {
+		if cli, err := cli.New(); err != nil {
 			errtype.ErrorHandler(err)
 		} else {
 			if p.Reg {
@@ -28,7 +28,7 @@ func main() {
 			ui = cli
 		}
 	case params.Web:
-		if web, err := web.New(p.DBPath); err != nil {
+		if web, err := web.New(); err != nil {
 			errtype.ErrorHandler(err)
 		} else {
 			ui = web

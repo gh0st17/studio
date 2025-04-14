@@ -3,10 +3,10 @@ module studio
 go 1.24.2
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.3.7 
-	github.com/google/uuid v1.6.0 
-	github.com/mattn/go-sqlite3 v1.14.27 
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/gin-gonic/gin v1.10.0
+	github.com/google/uuid v1.6.0
+	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.7.3
 	golang.org/x/term v0.31.0
 )

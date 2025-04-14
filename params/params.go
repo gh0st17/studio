@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"studio/filesystem"
 )
 
 type InterfaceType uint
@@ -26,7 +25,6 @@ const (
 
 type Params struct {
 	IType   InterfaceType // Тип интерфейса
-	DBPath  string        // Путь к файлу базы данных
 	Logging bool          // Печать логов
 	Reg     bool          // Регистрация нового клиента
 }
@@ -48,7 +46,6 @@ func ParseParams() (p *Params, err error) {
 	flag.Usage = printHelp
 	var interfaceType string
 	flag.StringVar(&interfaceType, "type", "", interfaceTypeDesc)
-	flag.StringVar(&p.DBPath, "db", "", dbPathDesc)
 	flag.BoolVar(&p.Reg, "registration", false, registrationDesc)
 
 	logging := flag.Bool("log", false, logDesc)
@@ -68,12 +65,6 @@ func ParseParams() (p *Params, err error) {
 
 	if interfaceType == "" {
 		return nil, ErrMissingIType
-	}
-	if p.DBPath == "" {
-		return nil, ErrMissingDBPath
-	}
-	if !filesystem.Exsists(p.DBPath) {
-		return nil, ErrDBNotExists
 	}
 
 	if err = p.checkInterfaceType(interfaceType); err != nil {

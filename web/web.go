@@ -32,9 +32,9 @@ func (u *User) AccessLevel() bt.AccessLevel { return u.AccLevel }
 func (u *User) GetId() uint                 { return u.Id }
 func (u *User) GetLogin() string            { return u.Login }
 
-func New(dbPath string) (web *Web, err error) {
+func New() (web *Web, err error) {
 	web = &Web{}
-	if web.st, err = studio.New(dbPath); err != nil {
+	if web.st, err = studio.New(); err != nil {
 		return nil, err
 	}
 	web.ctx = context.Background()
