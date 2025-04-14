@@ -57,7 +57,7 @@ func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
 
 	err := s.sDB.CreateOrder(ent.GetId(), cartModels)
 	if err != nil {
-		log.Fatalf("Не удалось создать заказ: %v\n", err)
+		log.Printf("Не удалось создать заказ: %v\n", err)
 		return nil
 	}
 

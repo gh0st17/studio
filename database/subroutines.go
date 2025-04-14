@@ -12,7 +12,7 @@ import (
 func (db *StudioDB) login(login, table string, dest interface{}) (bt.Entity, error) {
 	sp := selectParams{
 		"*", table, "", []joinClause{},
-		[]whereClause{{"login", "=", "'" + login + "'", ""}},
+		[]whereClause{{"login", "=", login, ""}},
 	}
 
 	err := db.fetchTable(sp, dest)
@@ -137,16 +137,4 @@ func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 	}
 
 	return models, nil
-}
-
-func (db *StudioDB) getLastId(table string, w []whereClause) (uint, error) {
-	type Id struct{ Id uint }
-	sp := selectParams{"id", table, "id", []joinClause{}, w}
-
-	var id []Id
-	if err := db.fetchTable(sp, &id); err != nil {
-		return 0, err
-	}
-
-	return id[len(id)-1].Id, nil
 }

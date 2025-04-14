@@ -4,15 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"studio/errtype"
-	"sync"
 
 	_ "github.com/lib/pq"
 )
 
 type StudioDB struct {
 	sDB *sql.DB
-	mu  sync.Mutex
 }
 
 // Представляет критрии для подстановки в условие
@@ -39,9 +38,10 @@ type selectParams struct {
 }
 
 type insertParams struct {
-	table  string
-	cols   string
-	values []string
+	table     string
+	cols      string
+	values    []string
+	returning string
 }
 
 type updateParams struct {
@@ -60,10 +60,12 @@ func (db *StudioDB) query(sp selectParams) (rows *sql.Rows, err error) {
 		}
 	}
 
+	var args []interface{}
 	if len(sp.criteries) > 0 {
 		query += "WHERE "
-		for _, c := range sp.criteries {
-			query += fmt.Sprintf("%s%s%v %s ", c.key, c.op, c.value, c.postOperator)
+		for i, c := range sp.criteries {
+			query += fmt.Sprintf("%s%s$%d %s ", c.key, c.op, i+1, c.postOperator)
+			args = append(args, c.value)
 		}
 	}
 
@@ -71,8 +73,8 @@ func (db *StudioDB) query(sp selectParams) (rows *sql.Rows, err error) {
 		query += fmt.Sprintf("ORDER BY %s ASC", sp.sortcol)
 	}
 
-	log.Printf("[db.query]: %s", query)
-	if rows, err = db.sDB.Query(query); err != nil {
+	log.Printf("[db.query]: %s | args: %v", query, args)
+	if rows, err = db.sDB.Query(query, args...); err != nil {
 		return nil, errtype.ErrDataBase(errtype.Join(ErrQuery, err))
 	}
 
@@ -80,27 +82,66 @@ func (db *StudioDB) query(sp selectParams) (rows *sql.Rows, err error) {
 }
 
 // Общая функция для вставки в базу данных
-func (db *StudioDB) insert(ip insertParams) (err error) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
+func (db *StudioDB) insert(ip insertParams, tx *sql.Tx) (row *sql.Row, err error) {
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", ip.table, ip.cols)
 
 	if len(ip.values) == 0 {
-		return errtype.ErrDataBase(ErrInsert)
+		return nil, errtype.ErrDataBase(ErrInsert)
 	}
 
-	for i, v := range ip.values {
-		query += fmt.Sprintf("(%s)", v)
+	var (
+		args []interface{}
+		i    int = 1
+	)
+	for k, v := range ip.values {
+		splittedVals := strings.Split(v, ",")
 
-		if len(ip.values) != i+1 {
+		query += "("
+		for j, sVal := range splittedVals {
+			query += fmt.Sprintf("$%d", i)
+			args = append(args, sVal)
+			i++
+
+			if len(splittedVals) != j+1 {
+				query += ","
+			}
+		}
+		query += ")"
+
+		if len(ip.values) != k+1 {
 			query += ","
 		}
 	}
 
-	log.Printf("[db.insert]: %s", query)
-	if _, err = db.sDB.Exec(query); err != nil {
-		return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
+	if ip.returning != "" {
+		query += " RETURNING " + ip.returning
+		log.Printf("[db.insert]: %s | args: %v", query, args)
+		row = db.queryInsert(tx, query, args)
+		return row, row.Err()
+	} else {
+		log.Printf("[db.insert]: %s | args: %v", query, args)
+		err = db.execInsert(tx, query, args)
+		return nil, err
+	}
+}
+
+func (db *StudioDB) queryInsert(tx *sql.Tx, query string, args []interface{}) *sql.Row {
+	if tx == nil {
+		return db.sDB.QueryRow(query, args...)
+	} else {
+		return tx.QueryRow(query, args...)
+	}
+}
+
+func (db *StudioDB) execInsert(tx *sql.Tx, query string, args []interface{}) (err error) {
+	if tx == nil {
+		if _, err = db.sDB.Exec(query, args...); err != nil {
+			return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
+		}
+	} else {
+		if _, err = tx.Exec(query, args...); err != nil {
+			return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
+		}
 	}
 
 	return nil
@@ -108,18 +149,22 @@ func (db *StudioDB) insert(ip insertParams) (err error) {
 
 // Общая функция для обновления в базе данных
 func (db *StudioDB) update(up updateParams) (err error) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	query := fmt.Sprintf("UPDATE %s SET ", up.table)
 
 	if len(up.set) == 0 {
 		return errtype.ErrDataBase(ErrUpdate)
 	}
 
-	var set []string
+	var (
+		set  []string
+		args []interface{}
+		i    int = 1
+	)
+
 	for k, v := range up.set {
-		set = append(set, fmt.Sprintf("%s=%s", k, v))
+		set = append(set, fmt.Sprintf("%s=$%d", k, i))
+		args = append(args, v)
+		i++
 	}
 
 	for i, s := range set {
@@ -134,12 +179,13 @@ func (db *StudioDB) update(up updateParams) (err error) {
 	if len(up.criteries) > 0 {
 		query += "WHERE "
 		for _, c := range up.criteries {
-			query += fmt.Sprintf("%s%s%v %s ", c.key, c.op, c.value, c.postOperator)
+			query += fmt.Sprintf("%s%s$%d %s ", c.key, c.op, i, c.postOperator)
+			args = append(args, c.value)
 		}
 	}
 
-	log.Printf("[db.update]: %s", query)
-	if _, err = db.sDB.Exec(query); err != nil {
+	log.Printf("[db.update]: %s | args: %v", query, args)
+	if _, err = db.sDB.Exec(query, args...); err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrUpdate, err))
 	}
 

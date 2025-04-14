@@ -35,7 +35,7 @@ func (db *StudioDB) CloseDB() error {
 func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	sp := selectParams{
 		"access_level", "users", "", []joinClause{},
-		[]whereClause{{"login", "=", "'" + login + "'", ""}},
+		[]whereClause{{"login", "=", login, ""}},
 	}
 
 	rows, err := db.query(sp)
@@ -65,10 +65,10 @@ func (db *StudioDB) Registration(customer bt.Customer) error {
 		"users", "login,access_level",
 		[]string{
 			fmt.Sprintf("'%s',1", customer.Login),
-		},
+		}, "",
 	}
 
-	if err := db.insert(ip); err != nil {
+	if _, err := db.insert(ip, nil); err != nil {
 		return err
 	}
 
@@ -80,10 +80,10 @@ func (db *StudioDB) Registration(customer bt.Customer) error {
 				"'%s','%s','%s'", customer.FirstName,
 				customer.LastName, customer.Login,
 			),
-		},
+		}, "",
 	}
 
-	if err := db.insert(ip); err != nil {
+	if _, err := db.insert(ip, nil); err != nil {
 		return err
 	}
 
@@ -186,6 +186,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 		ip       insertParams
 		order_id uint
 		tx       *sql.Tx
+		row      *sql.Row
 	)
 
 	ip = insertParams{
@@ -194,28 +195,18 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 			fmt.Sprintf(
 				"%d", cid,
 			),
-		},
+		}, "id",
 	}
 
 	if tx, err = db.sDB.Begin(); err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
 	}
 
-	if err = db.insert(ip); err != nil {
+	if row, err = db.insert(ip, tx); err != nil {
 		tx.Rollback()
 		return err
 	}
-
-	if order_id, err = db.getLastId(
-		"orders",
-		[]whereClause{{
-			"c_id", "=",
-			fmt.Sprint(cid), "",
-		}},
-	); err != nil {
-		tx.Rollback()
-		return err
-	}
+	row.Scan(&order_id)
 
 	for _, m := range models {
 		ip = insertParams{
@@ -224,10 +215,10 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 				fmt.Sprintf(
 					"%d,%d,%f", order_id, m.Id, m.Price,
 				),
-			},
+			}, "",
 		}
 
-		if err = db.insert(ip); err != nil {
+		if _, err = db.insert(ip, tx); err != nil {
 			tx.Rollback()
 			return err
 		}
