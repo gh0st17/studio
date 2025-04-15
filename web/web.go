@@ -87,6 +87,15 @@ func (web *Web) Run() error {
 	router.Static("/styles", TEMPLATES_PATH+"styles")
 	router.Static("/scripts", TEMPLATES_PATH+"scripts")
 
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusNotFound,
+			"alert.html",
+			gin.H{
+				"Msg": "Страница не найдена",
+			},
+		)
+	})
+
 	log.Println("Запуск веб-интерфейса...")
 	server := &http.Server{
 		Addr:    ":8080",
@@ -128,6 +137,7 @@ func (web *Web) checkCookies(c *gin.Context) {
 
 	if web.allCookiesExists(c) &&
 		(c.Request.URL.Path == "/login" ||
+			c.Request.URL.Path == "/do_login" ||
 			c.Request.URL.Path == "/register") {
 		c.Redirect(http.StatusSeeOther, "/")
 		c.Abort()
