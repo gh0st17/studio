@@ -90,7 +90,11 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		}()
 
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "alert.html", gin.H{"Msg": err.Error()})
+			c.HTML(
+				http.StatusInternalServerError,
+				"alert.html",
+				gin.H{"Msg": err.Error()},
+			)
 			log.Println("change status error:", err)
 			return
 		}
@@ -98,13 +102,23 @@ func (web *Web) ordersHandler(c *gin.Context) {
 
 	rawOrders, err := web.st.Orders(entity)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "alert.html", gin.H{"Msg": err.Error()})
+		c.HTML(
+			http.StatusInternalServerError,
+			"alert.html",
+			gin.H{"Msg": err.Error()},
+		)
 		log.Println("orders error:", err)
 		return
 	}
 
 	if len(rawOrders) == 0 {
-		c.HTML(http.StatusOK, "alert.html", gin.H{"Msg": "Вы еще не сделали ни одного заказа"})
+		c.HTML(
+			http.StatusOK,
+			"alert.html",
+			gin.H{
+				"Msg": "Вы еще не сделали ни одного заказа",
+			},
+		)
 		return
 	}
 
@@ -184,6 +198,12 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 }
 
 func (web *Web) createOrderHandler(c *gin.Context) {
+	entity := web.entityFromSession(c)
+
+	if entity.AccessLevel() == bt.OPERATOR {
+		c.Redirect(http.StatusSeeOther, "/")
+	}
+
 	if c.Request.Method == http.MethodPost {
 		if err := c.Request.ParseForm(); err != nil {
 			c.String(http.StatusBadRequest, "Ошибка парсинга формы")
@@ -199,7 +219,6 @@ func (web *Web) createOrderHandler(c *gin.Context) {
 			}
 		}
 
-		entity := web.entityFromSession(c)
 		err := web.st.CreateOrder(entity, modelIds)
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
