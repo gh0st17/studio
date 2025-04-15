@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	bt "studio/basic_types"
 	"studio/studio"
 
@@ -56,37 +58,61 @@ func New() (web *Web, err error) {
 
 func (web *Web) Run() error {
 	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	r.SetTrustedProxies(nil)
+	router := gin.Default()
+	router.SetTrustedProxies(nil)
 
 	// Загрузка шаблонов
-	r.FuncMap = template.FuncMap{
+	router.FuncMap = template.FuncMap{
 		"inc": inc,
 	}
-	r.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
+	router.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
 
-	r.Use(web.checkCookies)
+	router.Use(web.checkCookies)
 
 	// Маршруты
-	r.GET("/", web.mainHandler)
-	r.POST("/", web.mainHandler)
-	r.GET("/login", web.loginHandler)
-	r.POST("/do_login", web.doLoginHandler)
-	r.GET("/register", web.registerHandler)
-	r.POST("/register", web.registerHandler)
-	r.GET("/orders", web.ordersHandler)
-	r.POST("/orders", web.ordersHandler)
-	r.GET("/order-items", web.orderItemsHandler)
-	r.GET("/model", web.viewModelHandler)
-	r.GET("/create-order", web.createOrderHandler)
-	r.POST("/create-order", web.createOrderHandler)
+	router.GET("/", web.mainHandler)
+	router.POST("/", web.mainHandler)
+	router.GET("/login", web.loginHandler)
+	router.POST("/do_login", web.doLoginHandler)
+	router.GET("/register", web.registerHandler)
+	router.POST("/register", web.registerHandler)
+	router.GET("/orders", web.ordersHandler)
+	router.POST("/orders", web.ordersHandler)
+	router.GET("/order-items", web.orderItemsHandler)
+	router.GET("/model", web.viewModelHandler)
+	router.GET("/create-order", web.createOrderHandler)
+	router.POST("/create-order", web.createOrderHandler)
 
 	// Обработка статических файлов
-	r.Static("/styles", TEMPLATES_PATH+"styles")
-	r.Static("/scripts", TEMPLATES_PATH+"scripts")
+	router.Static("/styles", TEMPLATES_PATH+"styles")
+	router.Static("/scripts", TEMPLATES_PATH+"scripts")
 
 	log.Println("Запуск веб-интерфейса...")
-	return r.Run(":8080")
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	go func() {
+		<-quit
+		log.Println("Прерываю...")
+		if err := server.Close(); err != nil {
+			log.Fatal("Server Close:", err)
+		}
+	}()
+
+	if err := server.ListenAndServe(); err != nil {
+		if err == http.ErrServerClosed {
+			log.Println("Веб-сервер закрыт")
+		} else {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (web *Web) checkCookies(c *gin.Context) {
