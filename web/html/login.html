@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация</title>
+    <link href="/styles/style.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <div class="content">
+    <center>
+      <h2>Авторизация</h2><br>
+      <form method="POST" action="/do_login">
+        <table>
+          <tr>
+            <td><input style="width: 150px;" type="text" name="login" id="login" placeholder="Введите логин" required value="{{ .Login }}"/></td>
+          </tr>
+          <tr>
+            <td colspan="2" style="text-align: center;">
+              <button type="submit">Log in</button>
+            </td>
+          </tr>
+        </table>
+      </form>
+      <br>
+      <a href="/register">Регистрация</a>
+    </center>
+    </div>
+  </body>
+</html>

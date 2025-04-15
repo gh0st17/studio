@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Список заказов</title>
+  <link href="/styles/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <div class="content-table">
+  <h2>Список заказов</h2>
+    <div class="order-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Номер заказа</th>
+          <th>Статус</th>
+          <th>Общая стоимость</th>
+          <th>Дата создания</th>
+          <th>Дата выпуска</th>
+          <th>Действие</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Orders }}
+          <tr>
+            <td><a href="/order-items?id={{ .Id }}">{{ .Id }}</a></td>
+            <td>
+              {{ if .IsPending }}
+              ⏳ <!-- ожидание -->
+              {{ else if .IsCanceled }}
+              ❌ <!-- отменено -->
+              {{ else if .Released }}
+              ✅ <!-- выпущено -->
+              {{ else }}
+              🔄 <!-- обработка -->
+              {{ end }}
+              {{ .Status }}
+            </td>
+            <td>{{ .TotalPrice }}</td>
+            <td>{{ .CreateDate }}</td>
+            <td>{{ .ReleaseDate }}</td>
+            <td>
+              <form method="post">
+                <input type="hidden" name="order_id" value="{{ .Id }}">
+                <button type="submit"
+                {{ if not .IsPending }}disabled{{ end }}
+                name="action" value="cancel">Отменить</button>
+              </form>
+            </td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <center>
+    <a href="/" class="a-main">Главное меню</a>
+  </center>
+</body>
+</html>

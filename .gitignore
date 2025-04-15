@@ -1,6 +1,4 @@
-studio/.vscode/
-studio/builds/
-studio/__debug**
+.vscode/
+builds/
+__debug**
 **.DS_Store
-*drawio.bkp
-*.pdf
