@@ -9,13 +9,8 @@ import (
 	"studio/errtype"
 )
 
-func (db *StudioDB) login(login, table string, dest interface{}) (bt.Entity, error) {
-	sp := selectParams{
-		"*", table, "", []joinClause{},
-		[]whereClause{{"login", "=", login, ""}},
-	}
-
-	err := db.fetchTable(sp, dest)
+func (db *StudioDB) login(query string, args []any, dest interface{}) (bt.Entity, error) {
+	err := db.fetchTable(query, args, dest)
 	if err != nil {
 		return nil, err
 	}
@@ -29,8 +24,8 @@ func (db *StudioDB) login(login, table string, dest interface{}) (bt.Entity, err
 	return entity, nil
 }
 
-func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
-	rows, err := db.query(sp)
+func (db *StudioDB) fetchTable(query string, args []any, dest interface{}) error {
+	rows, err := db.queryRows(query, args)
 	if err != nil {
 		return err
 	}
@@ -83,7 +78,6 @@ func (db *StudioDB) fetchTable(sp selectParams, dest interface{}) error {
 
 func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 	var (
-		sp           selectParams
 		rows, mmRows *sql.Rows
 		m_id         uint
 		title        string
@@ -92,10 +86,7 @@ func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 	)
 	models = make(map[uint]bt.Model)
 
-	sp = selectParams{
-		"id, title, price", "models", "id", []joinClause{}, []whereClause{},
-	}
-	if rows, err = db.query(sp); err != nil {
+	if rows, err = db.queryRows(fetchModelsQuery, []any{}); err != nil {
 		return nil, err
 	}
 	defer rows.Close()
@@ -111,13 +102,7 @@ func (db *StudioDB) fetchModels() (models map[uint]bt.Model, err error) {
 		model.Materials = make(map[uint]bt.Material)
 		model.MatLeng = make(map[uint]float64)
 
-		sp = selectParams{
-			"m.id, m.title, mm.leng, m.price",
-			"model_materials mm JOIN materials m ON mm.material_id = m.id", "",
-			[]joinClause{},
-			[]whereClause{{"mm.model_id", "=", fmt.Sprint(m_id), ""}},
-		}
-		if mmRows, err = db.query(sp); err != nil {
+		if mmRows, err = db.queryRows(fetchModelMatQuery, []any{m_id}); err != nil {
 			return nil, err
 		}
 		for mmRows.Next() {

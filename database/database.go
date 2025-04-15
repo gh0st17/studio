@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	bt "studio/basic_types"
 	"studio/errtype"
 
@@ -12,9 +11,6 @@ import (
 // Выполняет подключение к базе данных
 func (db *StudioDB) LoadDB() error {
 	var err error
-	connStr := "host=localhost port=5432 user=studio "
-	connStr += "password=studio dbname=studio "
-	connStr += "sslmode=disable search_path=studio"
 	db.sDB, err = sql.Open("postgres", connStr)
 	if err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
@@ -33,12 +29,7 @@ func (db *StudioDB) CloseDB() error {
 }
 
 func (db *StudioDB) Login(login string) (bt.Entity, error) {
-	sp := selectParams{
-		"access_level", "users", "", []joinClause{},
-		[]whereClause{{"login", "=", login, ""}},
-	}
-
-	rows, err := db.query(sp)
+	rows, err := db.queryRows(loginQuery, []any{login})
 	if err != nil {
 		return nil, err
 	}
@@ -54,74 +45,46 @@ func (db *StudioDB) Login(login string) (bt.Entity, error) {
 	}
 
 	if bt.AccessLevel(accLevel) == bt.CUSTOMER {
-		return db.login(login, "customers", &[]bt.Customer{})
+		return db.login(fetchCustLoginQuery, []any{login}, &[]bt.Customer{})
 	} else {
-		return db.login(login, "employees", &[]bt.Employee{})
+		return db.login(fetchEmplLoginQuery, []any{login}, &[]bt.Employee{})
 	}
 }
 
-func (db *StudioDB) Registration(customer bt.Customer) error {
-	ip := insertParams{
-		"users", "login,access_level",
-		[]string{
-			fmt.Sprintf("'%s',1", customer.Login),
-		}, "",
+func (db *StudioDB) Registration(c bt.Customer) (err error) {
+	var tx *sql.Tx
+
+	if tx, err = db.sDB.Begin(); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
 	}
 
-	if _, err := db.insert(ip, nil); err != nil {
+	if err = db.exec(insertUserQuery, []any{c.Login, 1}, tx); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	ip = insertParams{
-		"customers",
-		"first_name,last_name,login",
-		[]string{
-			fmt.Sprintf(
-				"'%s','%s','%s'", customer.FirstName,
-				customer.LastName, customer.Login,
-			),
-		}, "",
-	}
-
-	if _, err := db.insert(ip, nil); err != nil {
+	args := []any{c.FirstName, c.LastName, c.Login}
+	if err = db.exec(insertCustQuery, args, tx); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return nil
-}
-
-func (db *StudioDB) FetchCustomers() (customers []bt.Customer, err error) {
-	sp := selectParams{
-		"*", "customers", "first_name, last_name", []joinClause{}, []whereClause{},
-	}
-
-	if err = db.fetchTable(sp, &customers); err != nil {
-		return nil, err
-	}
-
-	return customers, nil
+	return tx.Commit()
 }
 
 func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
-	cols := "o.id, c.first_name || ' ' || c.last_name AS customer_name, "
-	cols += "COALESCE(e.first_name || ' ' || e.last_name, '') AS employee_name, "
-	cols += "o.status, (SELECT SUM(unit_price) FROM order_items WHERE o_id = o.id) AS total_price, "
-	cols += "o.create_date, o.release_date"
-
-	sp := selectParams{
-		cols, "orders o", "o.id",
-		[]joinClause{
-			{"LEFT JOIN", "customers c", "ON o.c_id = c.id"},
-			{"LEFT JOIN", "employees e", "ON o.e_id = e.id"},
-		},
-		[]whereClause{},
-	}
-
+	var (
+		query string
+		args  []any
+	)
 	if cid > 0 {
-		sp.criteries = []whereClause{{"c_id", "=", fmt.Sprint(cid), ""}}
+		query = fetchOrdersQueryCid
+		args = append(args, cid)
+	} else {
+		query = fetchOrdersQueryAll
 	}
 
-	if err = db.fetchTable(sp, &orders); err != nil {
+	if err = db.fetchTable(query, args, &orders); err != nil {
 		return nil, err
 	}
 
@@ -134,14 +97,12 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.O
 		UnitPrice       float64
 	}
 
-	var orderItems []bt.OrderItem
+	var (
+		orderItems    []bt.OrderItem
+		rawOrderItems []RawOrderItem
+	)
 
-	sp := selectParams{
-		"*", "order_items", "id", []joinClause{},
-		[]whereClause{{"o_id", "=", fmt.Sprint(o_id), ""}},
-	}
-	var rawOrderItems []RawOrderItem
-	if err := db.fetchTable(sp, &rawOrderItems); err != nil {
+	if err := db.fetchTable(fetchOrderItemsQuery, []any{o_id}, &rawOrderItems); err != nil {
 		return nil, err
 	}
 
@@ -160,12 +121,8 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.O
 }
 
 func (db *StudioDB) FetchMaterials() (materials map[uint]bt.Material, err error) {
-	sp := selectParams{
-		"*", "materials", "id", []joinClause{}, []whereClause{},
-	}
-
 	var matSlice []bt.Material
-	if err = db.fetchTable(sp, &matSlice); err != nil {
+	if err = db.fetchTable(fetchMatQuery, []any{}, &matSlice); err != nil {
 		return nil, err
 	}
 
@@ -183,63 +140,45 @@ func (db *StudioDB) FetchModels() (models map[uint]bt.Model, err error) {
 
 func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	var (
-		ip       insertParams
 		order_id uint
 		tx       *sql.Tx
-		row      *sql.Row
 	)
-
-	ip = insertParams{
-		"orders", "c_id",
-		[]string{
-			fmt.Sprintf(
-				"%d", cid,
-			),
-		}, "id",
-	}
 
 	if tx, err = db.sDB.Begin(); err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
 	}
 
-	if row, err = db.insert(ip, tx); err != nil {
+	if row := db.queryRow(insertOrderQuery, []any{}, tx); row.Err() != nil {
 		tx.Rollback()
-		return err
+		return row.Err()
+	} else {
+		row.Scan(&order_id)
 	}
-	row.Scan(&order_id)
 
 	for _, m := range models {
-		ip = insertParams{
-			"order_items", "o_id, model, unit_price",
-			[]string{
-				fmt.Sprintf(
-					"%d,%d,%f", order_id, m.Id, m.Price,
-				),
-			}, "",
-		}
-
-		if _, err = db.insert(ip, tx); err != nil {
+		err = db.exec(
+			insertOrderItemsQuery,
+			[]any{order_id, m.Id, m.Price}, tx,
+		)
+		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
 
-	tx.Commit()
-	return nil
+	return tx.Commit()
 }
 
 func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
-	sp := selectParams{
-		"status", "orders", "", []joinClause{},
-		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
-	}
-	var orderStatus bt.OrderStatus
-	if rows, err := db.query(sp); err != nil {
-		return err
+	var (
+		tx          *sql.Tx
+		orderStatus bt.OrderStatus
+	)
+
+	if row := db.queryRow(fetchOrderStatus, []any{id}, nil); row.Err() != nil {
+		return row.Err()
 	} else {
-		rows.Next()
-		rows.Scan(&orderStatus)
-		rows.Close()
+		row.Scan(&orderStatus)
 	}
 
 	if newStatus == bt.Canceled && orderStatus > 1 {
@@ -248,29 +187,25 @@ func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
 		return ErrStatusRange
 	}
 
-	up := updateParams{
-		"orders",
-		map[string]string{"status": fmt.Sprint(int(newStatus))},
-		[]whereClause{{"id", "=", fmt.Sprint(id), ""}},
-	}
-
-	if err := db.update(up); err != nil {
+	if err := db.exec(updateStatusQuery, []any{newStatus, id}, tx); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return nil
+	return tx.Commit()
 }
 
-func (db *StudioDB) SetOperator(eId, oId uint) error {
-	up := updateParams{
-		"orders",
-		map[string]string{"e_id": fmt.Sprint(eId)},
-		[]whereClause{{"id", "=", fmt.Sprint(oId), ""}},
+func (db *StudioDB) SetOperator(eId, oId uint) (err error) {
+	var tx *sql.Tx
+
+	if tx, err = db.sDB.Begin(); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
 	}
 
-	if err := db.update(up); err != nil {
+	if err := db.exec(updateOrderEmplQuery, []any{eId, oId}, tx); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return nil
+	return tx.Commit()
 }
