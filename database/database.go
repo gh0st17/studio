@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"strings"
 	bt "studio/basic_types"
 	"studio/errtype"
 
@@ -9,11 +10,22 @@ import (
 )
 
 // Выполняет подключение к базе данных
-func (db *StudioDB) LoadDB() error {
-	var err error
-	db.sDB, err = sql.Open("postgres", connStr)
+func (db *StudioDB) LoadDB(socket string) (err error) {
+	var soc string
+
+	socParts := strings.Split(socket, ":")
+	if len(socParts) != 2 {
+		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
+	}
+
+	soc += "host=" + socParts[0] + " port=" + socParts[1] + " "
+	db.sDB, err = sql.Open("postgres", soc+connStr)
 	if err != nil {
 		return errtype.ErrDataBase(errtype.Join(ErrOpenDB, err))
+	}
+
+	if err = db.sDB.Ping(); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrPingDB, err))
 	}
 
 	return nil

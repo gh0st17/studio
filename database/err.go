@@ -6,6 +6,7 @@ import (
 
 var (
 	ErrOpenDB      = fmt.Errorf("ошибка открытия базы данных")
+	ErrPingDB      = fmt.Errorf("ошибка подключения к базе данных")
 	ErrCloseDB     = fmt.Errorf("ошибка закрытия базы данных")
 	ErrInsert      = fmt.Errorf("ошибка при вставке в базу данных")
 	ErrUpdate      = fmt.Errorf("ошибка при обновлении в базе данных")

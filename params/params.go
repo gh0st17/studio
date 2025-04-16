@@ -24,9 +24,12 @@ const (
 )
 
 type Params struct {
-	IType   InterfaceType // Тип интерфейса
-	Logging bool          // Печать логов
-	Reg     bool          // Регистрация нового клиента
+	IType    InterfaceType // Тип интерфейса
+	Logging  bool          // Печать логов
+	Reg      bool          // Регистрация нового клиента
+	HttpSoc  string        // Сокет для веб-сервера
+	RedisSoc string        // Сокет для подключения к Redis
+	PgSqlSoc string        // Сокет для подключения к pgSQL
 }
 
 // Печатает справку
@@ -46,6 +49,9 @@ func ParseParams() (p *Params, err error) {
 	flag.Usage = printHelp
 	var interfaceType string
 	flag.StringVar(&interfaceType, "type", "", interfaceTypeDesc)
+	flag.StringVar(&p.HttpSoc, "http", ":8080", httpSocDesc)
+	flag.StringVar(&p.RedisSoc, "redis", "localhost:6379", redisSocDesc)
+	flag.StringVar(&p.PgSqlSoc, "pgsql", "localhost:5432", pgSqlSocDesc)
 	flag.BoolVar(&p.Reg, "registration", false, registrationDesc)
 
 	logging := flag.Bool("log", false, logDesc)

@@ -1,6 +1,6 @@
 package database
 
-const connStr = "host=localhost port=5432 user=studio " +
+const connStr = "user=studio " +
 	"password=studio dbname=studio " +
 	"sslmode=disable search_path=studio"
 

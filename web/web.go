@@ -18,6 +18,7 @@ const TEMPLATES_PATH string = "web/html/"
 
 type Web struct {
 	st  *studio.Studio
+	srv *http.Server
 	rdb *redis.Client
 	ctx context.Context
 }
@@ -34,9 +35,9 @@ func (u *User) AccessLevel() bt.AccessLevel { return u.AccLevel }
 func (u *User) GetId() uint                 { return u.Id }
 func (u *User) GetLogin() string            { return u.Login }
 
-func New() (web *Web, err error) {
+func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 	web = &Web{}
-	if web.st, err = studio.New(); err != nil {
+	if web.st, err = studio.New(pgSqlSocket); err != nil {
 		return nil, err
 	}
 	web.ctx = context.Background()
@@ -53,10 +54,36 @@ func New() (web *Web, err error) {
 	}
 	log.Println("REDIS", pong)
 
+	web.srv = web.initHttp(httpSocket)
+
 	return web, nil
 }
 
 func (web *Web) Run() error {
+	log.Println("Запуск веб-интерфейса...")
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	go func() {
+		<-quit
+		log.Println("Прерываю...")
+		if err := web.srv.Close(); err != nil {
+			log.Fatal("Server Close:", err)
+		}
+	}()
+
+	if err := web.srv.ListenAndServe(); err != nil {
+		if err == http.ErrServerClosed {
+			log.Println("Веб-сервер закрыт")
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (web *Web) initHttp(webSocket string) *http.Server {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.SetTrustedProxies(nil)
@@ -96,32 +123,10 @@ func (web *Web) Run() error {
 		)
 	})
 
-	log.Println("Запуск веб-интерфейса...")
-	server := &http.Server{
-		Addr:    ":8080",
+	return &http.Server{
+		Addr:    webSocket,
 		Handler: router,
 	}
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-
-	go func() {
-		<-quit
-		log.Println("Прерываю...")
-		if err := server.Close(); err != nil {
-			log.Fatal("Server Close:", err)
-		}
-	}()
-
-	if err := server.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
-			log.Println("Веб-сервер закрыт")
-		} else {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (web *Web) checkCookies(c *gin.Context) {

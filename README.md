@@ -50,8 +50,14 @@
   -V	Печать номера версии и выход
   -help
     	Показать эту помощь
+  -http string
+    	Сокет для веб-сервера (default ":8080")
   -log
     	Печатать логи
+  -pgsql string
+    	Сокет для подключения к pgSQL (default "localhost:5432")
+  -redis string
+    	Сокет для подключения к Redis (default "localhost:6379")
   -registration
     	Регистрация нового клиента для CLI
   -type string
