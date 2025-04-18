@@ -1,10 +1,9 @@
 package params
 
 // Строки для справки
-
 const (
 	versionDesc = "Печать номера версии и выход"
-	versionText = "studio 1.0.0-rc3\n" +
+	versionText = "studio 1.0.0-rc4\n" +
 		"Copyright (C) 2025\n" +
 		"Лицензия MIT: THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY\n" +
 		"OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO\n" +
@@ -21,6 +20,9 @@ const (
 	useExample = "--type <тип интерфейса>"
 
 	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
+	httpSocDesc       = "Сокет для веб-сервера"
+	redisSocDesc      = "Сокет для подключения к Redis"
+	pgSqlSocDesc      = "Сокет для подключения к pgSQL"
 	registrationDesc  = "Регистрация нового клиента для CLI"
 	logDesc           = "Печатать логи"
 	helpDesc          = "Показать эту помощь"

@@ -1,6 +1,6 @@
 package database
 
-const connStr = "host=localhost port=5432 user=studio " +
+const connStr = "user=studio " +
 	"password=studio dbname=studio " +
 	"sslmode=disable search_path=studio"
 
@@ -10,17 +10,17 @@ const (
 	fetchCustLoginQuery = "SELECT * FROM customers WHERE login = $1"
 	fetchEmplLoginQuery = "SELECT * FROM employees WHERE login = $1"
 
-	fetchOrdersQueryHead = "SELECT o.id, c.first_name || ' ' || c.last_name AS customer_name, " +
+	fetchOrdersQueryHead = "SELECT o.id, o.c_id, c.first_name || ' ' || c.last_name AS customer_name, " +
 		"COALESCE(e.first_name || ' ' || e.last_name, '') AS employee_name, " +
 		"o.status, (SELECT SUM(unit_price) FROM order_items WHERE o_id = o.id) AS total_price, " +
-		"o.create_date, o.release_date " +
+		"o.create_date, COALESCE(o.release_date, TIMESTAMPTZ '1970-01-01 00:00:00+00') " +
 		"FROM orders o " +
 		"LEFT JOIN customers c ON o.c_id = c.id " +
 		"LEFT JOIN employees e ON o.e_id = e.id "
 
 	fetchOrdersQueryCid  = fetchOrdersQueryHead + " WHERE c_id = $1 ORDER BY o.id"
 	fetchOrdersQueryAll  = fetchOrdersQueryHead + " ORDER BY o.id"
-	fetchOrderItemsQuery = "SELECT * FROM order_items WHERE c_id = $1 ORDER BY o.id"
+	fetchOrderItemsQuery = "SELECT * FROM order_items WHERE o_id = $1 ORDER BY id"
 	fetchOrderStatus     = "SELECT status FROM orders WHERE id = $1"
 
 	fetchMatQuery      = "SELECT * FROM materials"

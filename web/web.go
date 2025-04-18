@@ -12,12 +12,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const TEMPLATES_PATH string = "web/html/"
 
 type Web struct {
 	st  *studio.Studio
+	srv *http.Server
 	rdb *redis.Client
 	ctx context.Context
 }
@@ -34,15 +38,15 @@ func (u *User) AccessLevel() bt.AccessLevel { return u.AccLevel }
 func (u *User) GetId() uint                 { return u.Id }
 func (u *User) GetLogin() string            { return u.Login }
 
-func New() (web *Web, err error) {
+func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 	web = &Web{}
-	if web.st, err = studio.New(); err != nil {
+	if web.st, err = studio.New(pgSqlSocket); err != nil {
 		return nil, err
 	}
 	web.ctx = context.Background()
 
 	web.rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     redisSocket,
 		Password: "",
 		DB:       0,
 	})
@@ -53,10 +57,39 @@ func New() (web *Web, err error) {
 	}
 	log.Println("REDIS", pong)
 
+	web.srv = web.initHttp(httpSocket)
+
+	prometheus.MustRegister(httpRequestsTotal)
+	prometheus.MustRegister(httpRequestDuration)
+
 	return web, nil
 }
 
 func (web *Web) Run() error {
+	log.Println("Запуск веб-интерфейса...")
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	go func() {
+		<-quit
+		log.Println("Прерываю...")
+		if err := web.srv.Close(); err != nil {
+			log.Fatal("Server Close:", err)
+		}
+	}()
+
+	if err := web.srv.ListenAndServe(); err != nil {
+		if err == http.ErrServerClosed {
+			log.Println("Веб-сервер закрыт")
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (web *Web) initHttp(webSocket string) *http.Server {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.SetTrustedProxies(nil)
@@ -64,12 +97,14 @@ func (web *Web) Run() error {
 	// Загрузка шаблонов
 	router.FuncMap = template.FuncMap{
 		"inc": inc,
+		"eq":  eq,
 	}
 	router.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
 
-	router.Use(web.checkCookies)
+	router.Use(web.checkCookies, metricsMiddleware())
 
 	// Маршруты
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/", web.mainHandler)
 	router.POST("/", web.mainHandler)
 	router.GET("/login", web.loginHandler)
@@ -96,36 +131,15 @@ func (web *Web) Run() error {
 		)
 	})
 
-	log.Println("Запуск веб-интерфейса...")
-	server := &http.Server{
-		Addr:    ":8080",
+	return &http.Server{
+		Addr:    webSocket,
 		Handler: router,
 	}
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-
-	go func() {
-		<-quit
-		log.Println("Прерываю...")
-		if err := server.Close(); err != nil {
-			log.Fatal("Server Close:", err)
-		}
-	}()
-
-	if err := server.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
-			log.Println("Веб-сервер закрыт")
-		} else {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (web *Web) checkCookies(c *gin.Context) {
 	if !web.allCookiesExists(c) &&
+		c.Request.URL.Path != "/metrics" &&
 		c.Request.URL.Path != "/login" &&
 		c.Request.URL.Path != "/do_login" &&
 		c.Request.URL.Path != "/register" &&
@@ -149,6 +163,10 @@ func (web *Web) checkCookies(c *gin.Context) {
 
 func inc(a int) int {
 	return a + 1
+}
+
+func eq(a bt.OrderStatus, b uint) bool {
+	return uint(a) == b
 }
 
 func customerOptions() []string {

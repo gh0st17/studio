@@ -26,11 +26,11 @@
           <tr>
             <td><a href="/order-items?id={{ .Id }}">{{ .Id }}</a></td>
             <td>
-              {{ if .IsPending }}
+              {{ if eq .Status 1 }}
               ⏳ <!-- ожидание -->
-              {{ else if .IsCanceled }}
+              {{ else if eq .Status 4 }}
               ❌ <!-- отменено -->
-              {{ else if .Released }}
+              {{ else if eq .Status 3 }}
               ✅ <!-- выпущено -->
               {{ else }}
               🔄 <!-- обработка -->
@@ -43,8 +43,9 @@
             <td>
               <form method="post">
                 <input type="hidden" name="order_id" value="{{ .Id }}">
+                <input type="hidden" name="c_id" value="{{ .CustomerId }}">
                 <button type="submit"
-                {{ if not .IsPending }}disabled{{ end }}
+                {{ if not (eq .Status 1) }}disabled{{ end }}
                 name="action" value="cancel">Отменить</button>
               </form>
             </td>

@@ -13,9 +13,9 @@ type Studio struct {
 	models    map[uint]bt.Model
 }
 
-func New() (st *Studio, err error) {
+func New(pgSqlSocket string) (st *Studio, err error) {
 	st = &Studio{}
-	if err = st.sDB.LoadDB(); err != nil {
+	if err = st.sDB.LoadDB(pgSqlSocket); err != nil {
 		return nil, err
 	}
 

@@ -15,13 +15,6 @@ func (web *Web) loginHandler(c *gin.Context) {
 		login = loginCookie
 	}
 
-	if web.allCookiesExists(c) {
-		sessionCookie, _ := c.Cookie("session_id")
-		web.addSession(login, sessionCookie)
-		c.Redirect(http.StatusSeeOther, "/")
-		return
-	}
-
 	c.HTML(http.StatusOK, "login.html", gin.H{"Login": login})
 }
 
@@ -45,7 +38,9 @@ func (web *Web) doLoginHandler(c *gin.Context) {
 
 		c.SetCookie("session_id", sessionID, 3600*24, "/", "", false, true)
 		c.SetCookie("login", login, 0, "/", "", false, true)
+		c.Redirect(http.StatusSeeOther, "/")
+		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/")
+	c.Redirect(http.StatusSeeOther, "/login")
 }
