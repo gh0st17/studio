@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	bt "studio/basic_types"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -75,8 +74,10 @@ func (web *Web) ordersHandler(c *gin.Context) {
 	if c.Request.Method == http.MethodPost {
 		action := c.PostForm("action")
 		orderId := c.PostForm("order_id")
+		customerId := c.PostForm("c_id")
 
 		oId, _ := strconv.ParseUint(orderId, 10, 32)
+		cId, _ := strconv.ParseUint(customerId, 10, 32)
 
 		err := func() error {
 			switch action {
@@ -100,68 +101,13 @@ func (web *Web) ordersHandler(c *gin.Context) {
 			log.Println("change status error:", err)
 			return
 		}
-	}
 
-	var (
-		rawOrders []bt.Order
-		err       error
-		key       string = "orders:0"
-	)
-
-	if entity.AccessLevel() == bt.CUSTOMER {
-		key = "orders:" + fmt.Sprint(entity.GetId())
-	}
-
-	if ok, _ := redisArrayExists(web, key); ok {
-		rawOrders, _ = loadFromRedis[bt.Order](web, key)
-	} else {
-		rawOrders, err = web.st.Orders(entity)
-		if err != nil {
-			c.HTML(
-				http.StatusInternalServerError,
-				"alert.html",
-				gin.H{"Msg": err.Error()},
-			)
-			log.Println("orders error:", err)
-			return
-		}
-		saveToRedis(web, key, rawOrders)
-	}
-
-	if len(rawOrders) == 0 {
-		c.HTML(
-			http.StatusOK,
-			"alert.html",
-			gin.H{
-				"Msg": "Вы еще не сделали ни одного заказа",
-			},
-		)
-		return
-	}
-
-	type Order struct {
-		bt.Order
-		CreateDate  string
-		ReleaseDate string
+		invalidateOrdersCache(web, uint(cId))
 	}
 
 	var orders []Order
-	for _, rawO := range rawOrders {
-		releaseDate := func() string {
-			if rawO.ReleaseDate != time.Unix(0, 0) {
-				return rawO.ReleaseDate.Format(bt.DateFormat)
-			} else {
-				return "---"
-			}
-		}()
-
-		o := Order{
-			Order:       rawO,
-			CreateDate:  rawO.CreateDate.Format(bt.DateFormat),
-			ReleaseDate: releaseDate,
-		}
-
-		orders = append(orders, o)
+	if orders = loadOrders(web, entity, c); orders == nil {
+		return
 	}
 
 	if entity.AccessLevel() == bt.CUSTOMER {

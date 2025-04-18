@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -32,4 +33,9 @@ func redisArrayExists(web *Web, key string) (bool, error) {
 		return false, err
 	}
 	return exists == 1, nil
+}
+
+func invalidateOrdersCache(web *Web, customer_id uint) {
+	web.rdb.Del(web.ctx, "orders:0")
+	web.rdb.Del(web.ctx, fmt.Sprintf("orders:%d", customer_id))
 }

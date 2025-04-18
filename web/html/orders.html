@@ -43,6 +43,7 @@
             <td>
               <form method="post">
                 <input type="hidden" name="order_id" value="{{ .Id }}">
+                <input type="hidden" name="c_id" value="{{ .CustomerId }}">
                 <button type="submit"
                 {{ if not (eq .Status 1) }}disabled{{ end }}
                 name="action" value="cancel">Отменить</button>

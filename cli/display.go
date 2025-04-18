@@ -19,10 +19,10 @@ func (orders customerOrders) String() (s string) {
 	for _, o := range orders {
 		ctime = o.CreateDate.Format(bt.DateFormat)
 
-		if o.ReleaseDate != time.Unix(0, 0) {
-			rtime = o.ReleaseDate.Format(bt.DateFormat)
-		} else {
+		if o.ReleaseDate.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
 			rtime = "---"
+		} else {
+			rtime = o.ReleaseDate.Format(bt.DateFormat)
 		}
 
 		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s\n",
@@ -46,10 +46,10 @@ func (orders employeeOrders) String() (s string) {
 	for _, o := range orders {
 		ctime = o.CreateDate.Format(bt.DateFormat)
 
-		if o.ReleaseDate != time.Unix(0, 0) {
-			rtime = o.ReleaseDate.Format(bt.DateFormat)
-		} else {
+		if o.ReleaseDate.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
 			rtime = "---"
+		} else {
+			rtime = o.ReleaseDate.Format(bt.DateFormat)
 		}
 
 		s += fmt.Sprintf("%3d %13s %9.2f %19s %19s %s\n",

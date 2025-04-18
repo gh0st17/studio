@@ -26,12 +26,12 @@ func (db *StudioDB) exec(query string, args []any, tx *sql.Tx) (err error) {
 	if tx == nil {
 		log.Printf("[db.exec]: %s | args: %v", query, args)
 		if _, err = db.sDB.Exec(query, args...); err != nil {
-			return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
+			return errtype.ErrDataBase(errtype.Join(ErrExec, err))
 		}
 	} else {
 		log.Printf("[db.execTx]: %s | args: %v", query, args)
 		if _, err = tx.Exec(query, args...); err != nil {
-			return errtype.ErrDataBase(errtype.Join(ErrInsert, err))
+			return errtype.ErrDataBase(errtype.Join(ErrExec, err))
 		}
 	}
 

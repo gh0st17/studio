@@ -67,6 +67,7 @@ func (stat OrderStatus) String() string {
 
 type Order struct {
 	Id           uint
+	CustomerId   uint
 	CustomerName string
 	EmployeeName string
 	Status       OrderStatus

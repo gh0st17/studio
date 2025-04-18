@@ -28,9 +28,6 @@ func (db *StudioDB) LoadDB(socket string) (err error) {
 		return errtype.ErrDataBase(errtype.Join(ErrPingDB, err))
 	}
 
-	db.sDB.SetMaxOpenConns(10)
-	db.sDB.SetMaxIdleConns(5)
-
 	return nil
 }
 
@@ -184,11 +181,15 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 	return tx.Commit()
 }
 
-func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) error {
+func (db *StudioDB) SetOrderStatus(id uint, newStatus bt.OrderStatus) (err error) {
 	var (
 		tx          *sql.Tx
 		orderStatus bt.OrderStatus
 	)
+
+	if tx, err = db.sDB.Begin(); err != nil {
+		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
+	}
 
 	if row := db.queryRow(fetchOrderStatus, []any{id}, nil); row.Err() != nil {
 		return row.Err()
