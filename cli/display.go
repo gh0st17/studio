@@ -17,10 +17,10 @@ func (orders customerOrders) String() (s string) {
 	)
 
 	for _, o := range orders {
-		ctime = o.LocalCreateDate().Format(bt.DateFormat)
+		ctime = o.CreateDate.Format(bt.DateFormat)
 
-		if o.LocalReleaseDate() != time.Unix(0, 0) {
-			rtime = o.LocalReleaseDate().Format(bt.DateFormat)
+		if o.ReleaseDate != time.Unix(0, 0) {
+			rtime = o.ReleaseDate.Format(bt.DateFormat)
 		} else {
 			rtime = "---"
 		}
@@ -44,10 +44,10 @@ func (orders employeeOrders) String() (s string) {
 	)
 
 	for _, o := range orders {
-		ctime = o.LocalCreateDate().Format(bt.DateFormat)
+		ctime = o.CreateDate.Format(bt.DateFormat)
 
-		if o.LocalReleaseDate() != time.Unix(0, 0) {
-			rtime = o.LocalReleaseDate().Format(bt.DateFormat)
+		if o.ReleaseDate != time.Unix(0, 0) {
+			rtime = o.ReleaseDate.Format(bt.DateFormat)
 		} else {
 			rtime = "---"
 		}

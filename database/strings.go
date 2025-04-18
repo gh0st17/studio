@@ -20,7 +20,7 @@ const (
 
 	fetchOrdersQueryCid  = fetchOrdersQueryHead + " WHERE c_id = $1 ORDER BY o.id"
 	fetchOrdersQueryAll  = fetchOrdersQueryHead + " ORDER BY o.id"
-	fetchOrderItemsQuery = "SELECT * FROM order_items WHERE c_id = $1 ORDER BY o.id"
+	fetchOrderItemsQuery = "SELECT * FROM order_items WHERE o_id = $1 ORDER BY id"
 	fetchOrderStatus     = "SELECT status FROM orders WHERE id = $1"
 
 	fetchMatQuery      = "SELECT * FROM materials"

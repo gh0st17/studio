@@ -12,6 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const TEMPLATES_PATH string = "web/html/"
@@ -43,7 +46,7 @@ func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 	web.ctx = context.Background()
 
 	web.rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     redisSocket,
 		Password: "",
 		DB:       0,
 	})
@@ -55,6 +58,9 @@ func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 	log.Println("REDIS", pong)
 
 	web.srv = web.initHttp(httpSocket)
+
+	prometheus.MustRegister(httpRequestsTotal)
+	prometheus.MustRegister(httpRequestDuration)
 
 	return web, nil
 }
@@ -91,12 +97,14 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 	// Загрузка шаблонов
 	router.FuncMap = template.FuncMap{
 		"inc": inc,
+		"eq":  eq,
 	}
 	router.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
 
-	router.Use(web.checkCookies)
+	router.Use(web.checkCookies, metricsMiddleware())
 
 	// Маршруты
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/", web.mainHandler)
 	router.POST("/", web.mainHandler)
 	router.GET("/login", web.loginHandler)
@@ -131,6 +139,7 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 
 func (web *Web) checkCookies(c *gin.Context) {
 	if !web.allCookiesExists(c) &&
+		c.Request.URL.Path != "/metrics" &&
 		c.Request.URL.Path != "/login" &&
 		c.Request.URL.Path != "/do_login" &&
 		c.Request.URL.Path != "/register" &&
@@ -154,6 +163,10 @@ func (web *Web) checkCookies(c *gin.Context) {
 
 func inc(a int) int {
 	return a + 1
+}
+
+func eq(a bt.OrderStatus, b uint) bool {
+	return uint(a) == b
 }
 
 func customerOptions() []string {

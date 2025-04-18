@@ -28,6 +28,9 @@ func (db *StudioDB) LoadDB(socket string) (err error) {
 		return errtype.ErrDataBase(errtype.Join(ErrPingDB, err))
 	}
 
+	db.sDB.SetMaxOpenConns(10)
+	db.sDB.SetMaxIdleConns(5)
+
 	return nil
 }
 

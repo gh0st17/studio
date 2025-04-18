@@ -39,11 +39,11 @@
               <td>{{ .CustomerName }}</td>
               <td>{{ .EmployeeName }}</td>
               <td>
-                {{ if .IsPending }}
+                {{ if eq .Status 1 }}
                 ⏳ <!-- ожидание -->
-                {{ else if .IsCanceled }}
+                {{ else if eq .Status 4 }}
                 ❌ <!-- отменено -->
-                {{ else if .Released }}
+                {{ else if eq .Status 3 }}
                 ✅ <!-- выпущено -->
                 {{ else }}
                 🔄 <!-- обработка -->
@@ -57,18 +57,18 @@
                 <form method="post">
                   <input type="hidden" name="order_id" value="{{ .Id }}">
                   <button type="submit"
-                    {{ if or .Released .IsCanceled }}
+                    {{ if or (eq .Status 3) (eq .Status 4) }}
                       disabled
                     {{ end }}
                     
                     name="action" 
                     
-                    value="{{ if .Processed }}release{{ else }}process{{ end }}">
-                    {{ if .Processed }}
+                    value="{{ if eq .Status 3 }}release{{ else }}process{{ end }}">
+                    {{ if eq .Status 3 }}
                     Готов к выдаче
-                    {{ else if .IsPending }}
+                    {{ else if eq .Status 1 }}
                     Выполнить
-                    {{ else if .IsCanceled }}
+                    {{ else if eq .Status 4 }}
                     Отменен
                     {{ else }}
                     Выдан

@@ -1,10 +1,12 @@
 package web
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	bt "studio/basic_types"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -100,15 +102,30 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		}
 	}
 
-	rawOrders, err := web.st.Orders(entity)
-	if err != nil {
-		c.HTML(
-			http.StatusInternalServerError,
-			"alert.html",
-			gin.H{"Msg": err.Error()},
-		)
-		log.Println("orders error:", err)
-		return
+	var (
+		rawOrders []bt.Order
+		err       error
+		key       string = "orders:0"
+	)
+
+	if entity.AccessLevel() == bt.CUSTOMER {
+		key = "orders:" + fmt.Sprint(entity.GetId())
+	}
+
+	if ok, _ := redisArrayExists(web, key); ok {
+		rawOrders, _ = loadFromRedis[bt.Order](web, key)
+	} else {
+		rawOrders, err = web.st.Orders(entity)
+		if err != nil {
+			c.HTML(
+				http.StatusInternalServerError,
+				"alert.html",
+				gin.H{"Msg": err.Error()},
+			)
+			log.Println("orders error:", err)
+			return
+		}
+		saveToRedis(web, key, rawOrders)
 	}
 
 	if len(rawOrders) == 0 {
@@ -126,17 +143,13 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		bt.Order
 		CreateDate  string
 		ReleaseDate string
-		IsPending   bool
-		Released    bool
-		Processed   bool
-		IsCanceled  bool
 	}
 
 	var orders []Order
 	for _, rawO := range rawOrders {
 		releaseDate := func() string {
-			if rawO.ReleaseDate != 0 {
-				return rawO.LocalReleaseDate().Format(bt.DateFormat)
+			if rawO.ReleaseDate != time.Unix(0, 0) {
+				return rawO.ReleaseDate.Format(bt.DateFormat)
 			} else {
 				return "---"
 			}
@@ -144,12 +157,8 @@ func (web *Web) ordersHandler(c *gin.Context) {
 
 		o := Order{
 			Order:       rawO,
-			CreateDate:  rawO.LocalCreateDate().Format(bt.DateFormat),
+			CreateDate:  rawO.CreateDate.Format(bt.DateFormat),
 			ReleaseDate: releaseDate,
-			IsPending:   rawO.Status == bt.Pending,
-			Released:    rawO.Status == bt.Released,
-			Processed:   rawO.Status == bt.Processing,
-			IsCanceled:  rawO.Status == bt.Canceled,
 		}
 
 		orders = append(orders, o)
@@ -167,31 +176,43 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 		orderID := c.Query("id")
 
 		if orderID == "" {
-			c.String(http.StatusBadRequest, "Не указан ID заказа")
+			c.HTML(
+				http.StatusBadRequest, "alert.html",
+				gin.H{"Msg": "Не указан ID заказа"})
 			return
 		}
 
 		o_id, err := strconv.ParseUint(orderID, 10, 32)
 		if err != nil {
-			c.String(http.StatusBadRequest, "ID заказа указан неверно")
+			c.HTML(
+				http.StatusBadRequest, "alert.html",
+				gin.H{"Msg": "ID заказа указан неверно"})
 			return
 		}
 
+		var orderItems []bt.OrderItem
 		entity := web.entityFromSession(c)
-		if orderItems, err := web.st.OrderItems(entity, uint(o_id)); err != nil {
-			c.HTML(http.StatusForbidden, "alert.html", gin.H{"Msg": err.Error()})
-			log.Println("orders items error:", err)
-		} else {
-			var totalPrice float64
-			for _, item := range orderItems {
-				totalPrice += item.UnitPrice
-			}
+		key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), o_id)
 
-			c.HTML(http.StatusOK, "order-items.html", gin.H{
-				"OrderItems": orderItems,
-				"TotalPrice": totalPrice,
-			})
+		if ok, _ := redisArrayExists(web, key); ok {
+			orderItems, _ = loadFromRedis[bt.OrderItem](web, key)
+		} else {
+			if orderItems, err = web.st.OrderItems(entity, uint(o_id)); err != nil {
+				c.HTML(http.StatusForbidden, "alert.html", gin.H{"Msg": err.Error()})
+				log.Println("orders items error:", err)
+			}
+			saveToRedis(web, key, orderItems)
 		}
+
+		var totalPrice float64
+		for _, item := range orderItems {
+			totalPrice += item.UnitPrice
+		}
+
+		c.HTML(http.StatusOK, "order-items.html", gin.H{
+			"OrderItems": orderItems,
+			"TotalPrice": totalPrice,
+		})
 	} else {
 		c.Redirect(http.StatusSeeOther, "/")
 	}

@@ -71,20 +71,8 @@ type Order struct {
 	EmployeeName string
 	Status       OrderStatus
 	TotalPrice   float64
-	CreateDate   int64
-	ReleaseDate  int64
-}
-
-func (o *Order) time(unixSec int64) time.Time {
-	return time.Unix(unixSec, 0)
-}
-
-func (o *Order) LocalCreateDate() time.Time {
-	return o.time(o.CreateDate)
-}
-
-func (o *Order) LocalReleaseDate() time.Time {
-	return o.time(o.ReleaseDate)
+	CreateDate   time.Time
+	ReleaseDate  time.Time
 }
 
 type OrderItem struct {
