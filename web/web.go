@@ -101,7 +101,11 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 	}
 	router.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
 
-	router.Use(web.checkCookies, metricsMiddleware())
+	router.Use(
+		web.checkCookies,
+		web.checkSession,
+		metricsMiddleware(),
+	)
 
 	// Маршруты
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -156,6 +160,30 @@ func (web *Web) checkCookies(c *gin.Context) {
 		c.Redirect(http.StatusSeeOther, "/")
 		c.Abort()
 		return
+	}
+
+	c.Next()
+}
+
+func (web *Web) checkSession(c *gin.Context) {
+	// Список защищённых путей
+	protectedPaths := map[string]bool{
+		"/":             true,
+		"/orders":       true,
+		"/order-items":  true,
+		"/create-order": true,
+	}
+
+	// Проверяем, защищён ли путь
+	if protectedPaths[c.Request.URL.Path] {
+		entity := web.entityFromSession(c)
+		if entity == nil {
+			c.SetCookie("login", "", 0, "/", "", false, true)
+			c.SetCookie("session_id", "", 0, "/", "", false, true)
+			c.Redirect(http.StatusSeeOther, "/login")
+			c.Abort()
+			return
+		}
 	}
 
 	c.Next()

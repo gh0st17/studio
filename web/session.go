@@ -11,13 +11,17 @@ import (
 )
 
 func (web *Web) allCookiesExists(c *gin.Context) bool {
-	_, loginErr := c.Cookie("login")
-	_, sessionErr := c.Cookie("session_id")
-	return loginErr == nil && sessionErr == nil
+	l, _ := c.Cookie("login")
+	s, _ := c.Cookie("session_id")
+	return l != "" && s != ""
 }
 
 func (web *Web) addSession(login, sessionID string) {
 	entity, _ := web.st.Login(login)
+	if entity == nil {
+		return
+	}
+
 	err := web.rdb.HSet(web.ctx, "session:"+sessionID, map[string]interface{}{
 		"id":           fmt.Sprint(entity.GetId()),
 		"login":        entity.GetLogin(),
