@@ -3,11 +3,7 @@
 package errtype
 
 import (
-	"compress/gzip"
-	"compress/zlib"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -19,34 +15,6 @@ type Error struct {
 // Перевод и форматирование встроенных ошибок
 func (e Error) Error() string {
 	return e.text
-}
-
-// Локализует известные ошибки
-func localizeErr(err error) error {
-	if err == nil {
-		return nil
-	} else if _, ok := err.(*Error); ok {
-		return err
-	}
-
-	switch {
-	case errors.Is(err, gzip.ErrHeader) || errors.Is(err, zlib.ErrHeader):
-		return errors.New("ошибка заголовка сжатых данных")
-	case errors.Is(err, gzip.ErrChecksum) || errors.Is(err, zlib.ErrChecksum):
-		return errors.New("неверная контрольная сумма")
-	case errors.Is(err, os.ErrPermission):
-		return errors.New(fmt.Sprint("нет доступа", err))
-	case errors.Is(err, os.ErrExist):
-		return errors.New("файл уже существует")
-	case errors.Is(err, os.ErrNotExist):
-		return errors.New("файл не существует")
-	case errors.Is(err, io.EOF):
-		return errors.New("достигнут конец файла")
-	case errors.Is(err, io.ErrUnexpectedEOF):
-		return errors.New("неожиданный конец файла")
-	default:
-		return err
-	}
 }
 
 // Возвращает общую ошибку времени выполнения
@@ -92,13 +60,11 @@ func Join(errs ...error) error {
 	for _, err := range errs {
 		if err == nil {
 			continue
-		} else if _, ok := err.(*Error); !ok {
-			err = localizeErr(err)
 		}
 
 		if e == nil {
 			e = err
-		} else if err != nil {
+		} else {
 			e = fmt.Errorf("%v: %v", e, err)
 		}
 	}
