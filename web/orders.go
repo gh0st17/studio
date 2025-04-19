@@ -17,7 +17,7 @@ type Order struct {
 	ReleaseDate string
 }
 
-func loadOrders(web *Web, entity bt.Entity, c *gin.Context) []Order {
+func loadOrders(web *Web, entity bt.Entity, present bool, c *gin.Context) []Order {
 	var (
 		orders []Order
 		key    string = "orders:0"
@@ -27,32 +27,28 @@ func loadOrders(web *Web, entity bt.Entity, c *gin.Context) []Order {
 		key = "orders:" + fmt.Sprint(entity.GetId())
 	}
 
-	if ok, _ := redisArrayExists(web, key); ok {
-		orders, _ = loadFromRedis[Order](web, key)
-	} else {
-		rawOrders, err := web.st.Orders(entity)
-		if err != nil {
-			c.HTML(
-				http.StatusInternalServerError,
-				"alert.html",
-				gin.H{"Msg": err.Error()},
-			)
-			log.Println("orders error:", err)
-			return nil
+	if present {
+		var err error
+		orders, err = loadFromRedis[Order](web, key)
+		if err == nil {
+			return orders
 		}
-		orders = transformOrders(rawOrders)
+	}
 
-		saveToRedis(web, key, orders)
+	rawOrders, err := web.st.Orders(entity)
+	if err != nil {
+		web.alert(c, http.StatusInternalServerError, err.Error())
+		log.Println("orders error:", err)
+		return nil
+	}
+	orders = transformOrders(rawOrders)
+
+	if present {
+		go saveToRedis(web, key, orders)
 	}
 
 	if len(orders) == 0 {
-		c.HTML(
-			http.StatusOK,
-			"alert.html",
-			gin.H{
-				"Msg": "Вы еще не сделали ни одного заказа",
-			},
-		)
+		web.alert(c, http.StatusOK, emptyOrders)
 		return nil
 	}
 

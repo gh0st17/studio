@@ -28,13 +28,16 @@ func (web *Web) doLoginHandler(c *gin.Context) {
 		login := c.PostForm("login")
 		entity, err := web.st.Login(login)
 		if entity == nil || err != nil {
-			c.HTML(http.StatusInternalServerError, "alert.html", gin.H{"Msg": err.Error()})
+			web.alert(c, http.StatusInternalServerError, err.Error())
 			log.Println("login error:", err)
 			return
 		}
 
 		sessionID := uuid.New().String()
-		web.addSession(entity, sessionID)
+
+		if web.rdbPresent.Load() {
+			web.addSession(entity, sessionID)
+		}
 
 		c.SetCookie("session_id", sessionID, 3600*24, "/", "", false, true)
 		c.SetCookie("login", login, 0, "/", "", false, true)
