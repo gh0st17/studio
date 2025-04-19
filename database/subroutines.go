@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
-	bt "studio/basic_types"
-	"studio/errtype"
+
+	bt "github.com/gh0st17/studio/basic_types"
+	"github.com/gh0st17/studio/errtype"
 )
 
 func (db *StudioDB) login(query string, args []any, dest interface{}) (bt.Entity, error) {

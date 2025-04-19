@@ -2,9 +2,10 @@ package studio
 
 import (
 	"log"
-	bt "studio/basic_types"
-	db "studio/database"
-	"studio/errtype"
+
+	bt "github.com/gh0st17/studio/basic_types"
+	db "github.com/gh0st17/studio/database"
+	"github.com/gh0st17/studio/errtype"
 )
 
 type Studio struct {

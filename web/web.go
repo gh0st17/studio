@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	bt "studio/basic_types"
-	"studio/studio"
+	"sync/atomic"
+
+	bt "github.com/gh0st17/studio/basic_types"
+	"github.com/gh0st17/studio/studio"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -20,10 +22,11 @@ import (
 const TEMPLATES_PATH string = "web/html/"
 
 type Web struct {
-	st  *studio.Studio
-	srv *http.Server
-	rdb *redis.Client
-	ctx context.Context
+	st         *studio.Studio
+	srv        *http.Server
+	rdb        *redis.Client
+	ctx        context.Context
+	rdbPresent atomic.Bool
 }
 
 type User struct {
@@ -55,6 +58,7 @@ func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 	if err != nil {
 		log.Printf("REDIS: %v", err)
 	} else {
+		web.rdbPresent.Store(true)
 		log.Println("REDIS", pong)
 	}
 
@@ -104,7 +108,7 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 
 	router.Use(
 		web.checkCookies,
-		web.checkSession,
+		web.isRedisPresent,
 		metricsMiddleware(),
 	)
 
@@ -128,12 +132,7 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 	router.Static("/scripts", TEMPLATES_PATH+"scripts")
 
 	router.NoRoute(func(c *gin.Context) {
-		c.HTML(http.StatusNotFound,
-			"alert.html",
-			gin.H{
-				"Msg": "Страница не найдена",
-			},
-		)
+		web.alert(c, http.StatusNotFound, notFound)
 	})
 
 	return &http.Server{
@@ -166,30 +165,8 @@ func (web *Web) checkCookies(c *gin.Context) {
 	c.Next()
 }
 
-func (web *Web) checkSession(c *gin.Context) {
-	if _, err := web.rdb.Ping(web.ctx).Result(); err != nil {
-		c.Next()
-	}
-
-	protectedPaths := map[string]bool{
-		"/":             true,
-		"/orders":       true,
-		"/order-items":  true,
-		"/create-order": true,
-	}
-
-	if protectedPaths[c.Request.URL.Path] {
-		entity := web.entityFromSession(c)
-		if entity == nil {
-			c.SetCookie("login", "", 0, "/", "", false, true)
-			c.SetCookie("session_id", "", 0, "/", "", false, true)
-			c.Redirect(http.StatusSeeOther, "/login")
-			c.Abort()
-			return
-		}
-	}
-
-	c.Next()
+func (web *Web) alert(c *gin.Context, code int, msg string) {
+	c.HTML(code, "alert.html", gin.H{"Msg": msg})
 }
 
 func inc(a int) int {

@@ -3,8 +3,9 @@ package database
 import (
 	"database/sql"
 	"strings"
-	bt "studio/basic_types"
-	"studio/errtype"
+
+	bt "github.com/gh0st17/studio/basic_types"
+	"github.com/gh0st17/studio/errtype"
 
 	_ "github.com/lib/pq"
 )

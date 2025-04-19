@@ -1,4 +1,4 @@
-module studio
+module github.com/gh0st17/studio
 
 go 1.24.2
 

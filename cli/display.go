@@ -2,8 +2,9 @@ package cli
 
 import (
 	"fmt"
-	bt "studio/basic_types"
 	"time"
+
+	bt "github.com/gh0st17/studio/basic_types"
 )
 
 type customerOrders []bt.Order

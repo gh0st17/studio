@@ -5,7 +5,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	bt "studio/basic_types"
+
+	bt "github.com/gh0st17/studio/basic_types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +20,7 @@ func (web *Web) registerHandler(c *gin.Context) {
 		}
 
 		if err := web.st.Registration(customer); err != nil {
-			c.String(http.StatusInternalServerError, "Ошибка регистрации")
+			web.alert(c, http.StatusInternalServerError, registrationError)
 			log.Println("registration error:", err)
 			return
 		}
@@ -41,14 +42,16 @@ func (web *Web) mainHandler(c *gin.Context) {
 		case "Просмотреть заказы":
 			c.Redirect(http.StatusSeeOther, "/orders")
 		case "Выход":
-			web.rdb.Del(web.ctx, "session:"+sessionCookie)
+			if web.rdbPresent.Load() {
+				web.rdb.Del(web.ctx, "session:"+sessionCookie)
+			}
 			c.SetCookie("session_id", "", -1, "/", "", false, true)
 			c.Redirect(http.StatusSeeOther, "/login")
 		}
 		return
 	}
 
-	entity := web.entityFromSession(c)
+	entity := web.loadEntity(c)
 
 	var opt []string
 	if entity.AccessLevel() == bt.CUSTOMER {
@@ -69,17 +72,33 @@ func (web *Web) mainHandler(c *gin.Context) {
 }
 
 func (web *Web) ordersHandler(c *gin.Context) {
-	entity := web.entityFromSession(c)
+	var err error
 
+	entity := web.loadEntity(c)
 	if c.Request.Method == http.MethodPost {
 		action := c.PostForm("action")
 		orderId := c.PostForm("order_id")
 		customerId := c.PostForm("c_id")
 
-		oId, _ := strconv.ParseUint(orderId, 10, 32)
-		cId, _ := strconv.ParseUint(customerId, 10, 32)
+		var cId uint64
 
-		err := func() error {
+		if customerId == "" {
+			cId = uint64(entity.GetId())
+		} else {
+			cId, err = strconv.ParseUint(customerId, 10, 32)
+			if err != nil {
+				web.alert(c, http.StatusBadRequest, wrongClientID)
+				return
+			}
+		}
+
+		oId, err := strconv.ParseUint(orderId, 10, 32)
+		if err != nil {
+			web.alert(c, http.StatusBadRequest, wrongOrderID)
+			return
+		}
+
+		err = func() error {
 			switch action {
 			case "process":
 				return web.st.ProcessOrder(entity, uint(oId))
@@ -93,11 +112,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		}()
 
 		if err != nil {
-			c.HTML(
-				http.StatusInternalServerError,
-				"alert.html",
-				gin.H{"Msg": err.Error()},
-			)
+			web.alert(c, http.StatusInternalServerError, err.Error())
 			log.Println("change status error:", err)
 			return
 		}
@@ -106,7 +121,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 	}
 
 	var orders []Order
-	if orders = loadOrders(web, entity, c); orders == nil {
+	if orders = loadOrders(web, entity, web.rdbPresent.Load(), c); orders == nil {
 		return
 	}
 
@@ -122,32 +137,31 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 		orderID := c.Query("id")
 
 		if orderID == "" {
-			c.HTML(
-				http.StatusBadRequest, "alert.html",
-				gin.H{"Msg": "Не указан ID заказа"})
+			web.alert(c, http.StatusBadRequest, missingOrderID)
 			return
 		}
 
 		o_id, err := strconv.ParseUint(orderID, 10, 32)
 		if err != nil {
-			c.HTML(
-				http.StatusBadRequest, "alert.html",
-				gin.H{"Msg": "ID заказа указан неверно"})
+			web.alert(c, http.StatusBadRequest, wrongOrderID)
 			return
 		}
 
 		var orderItems []bt.OrderItem
-		entity := web.entityFromSession(c)
-		key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), o_id)
 
-		if ok, _ := redisArrayExists(web, key); ok {
+		entity := web.loadEntity(c)
+		key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), o_id)
+		if web.rdbPresent.Load() && redisArrayExists(web, key) {
 			orderItems, _ = loadFromRedis[bt.OrderItem](web, key)
 		} else {
 			if orderItems, err = web.st.OrderItems(entity, uint(o_id)); err != nil {
-				c.HTML(http.StatusForbidden, "alert.html", gin.H{"Msg": err.Error()})
+				web.alert(c, http.StatusForbidden, err.Error())
 				log.Println("orders items error:", err)
 			}
-			saveToRedis(web, key, orderItems)
+
+			if web.rdbPresent.Load() {
+				go saveToRedis(web, key, orderItems)
+			}
 		}
 
 		var totalPrice float64
@@ -165,8 +179,7 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 }
 
 func (web *Web) createOrderHandler(c *gin.Context) {
-	entity := web.entityFromSession(c)
-
+	entity := web.loadEntity(c)
 	if entity.AccessLevel() == bt.OPERATOR {
 		c.Redirect(http.StatusSeeOther, "/")
 	}

@@ -6,10 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	bt "studio/basic_types"
-	"studio/cli/userinput"
-	db "studio/database"
-	"studio/studio"
+
+	bt "github.com/gh0st17/studio/basic_types"
+	"github.com/gh0st17/studio/cli/userinput"
+	db "github.com/gh0st17/studio/database"
+	"github.com/gh0st17/studio/studio"
 
 	"github.com/AlecAivazis/survey/v2"
 )
