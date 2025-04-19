@@ -63,7 +63,7 @@ func (orders employeeOrders) String() (s string) {
 type (
 	OrderItems []bt.OrderItem
 	Model      bt.Model
-	Models     []bt.Model
+	Models     map[uint]bt.Model
 )
 
 func (orderItems OrderItems) String() (s string) {

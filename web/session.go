@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	bt "studio/basic_types"
 	"time"
@@ -11,14 +12,13 @@ import (
 )
 
 func (web *Web) allCookiesExists(c *gin.Context) bool {
-	_, loginErr := c.Cookie("login")
-	_, sessionErr := c.Cookie("session_id")
-	return loginErr == nil && sessionErr == nil
+	l, _ := c.Cookie("login")
+	s, _ := c.Cookie("session_id")
+	return l != "" && s != ""
 }
 
-func (web *Web) addSession(login, sessionID string) {
-	entity, _ := web.st.Login(login)
-	err := web.rdb.HSet(web.ctx, "session:"+sessionID, map[string]interface{}{
+func (web *Web) addSession(entity bt.Entity, sessionKey string) {
+	err := web.rdb.HSet(web.ctx, sessionKey, map[string]interface{}{
 		"id":           fmt.Sprint(entity.GetId()),
 		"login":        entity.GetLogin(),
 		"fullname":     entity.FullName(),
@@ -27,7 +27,7 @@ func (web *Web) addSession(login, sessionID string) {
 	if err != nil {
 		log.Println("add from cookies error:", err)
 	}
-	err = web.rdb.Expire(web.ctx, "session:"+sessionID, 24*time.Hour).Err()
+	err = web.rdb.Expire(web.ctx, sessionKey, 24*time.Hour).Err()
 	if err != nil {
 		log.Println("set expire error:", err)
 	}
@@ -42,17 +42,27 @@ func (web *Web) entityFromSession(c *gin.Context) (entity bt.Entity) {
 		result, err := web.rdb.HGetAll(web.ctx, sessionKey).Result()
 		if err != nil {
 			log.Println("reading redis error:", err)
-			return nil
 		}
 
 		if len(result) == 0 {
-			web.addSession(loginCookie, sessionCookie)
+			entity, err := web.st.Login(loginCookie)
+			if err != nil {
+				c.HTML(
+					http.StatusInternalServerError,
+					"alert.html",
+					gin.H{"Msg": err.Error()},
+				)
+				log.Println(err)
+				return nil
+			}
 
+			web.addSession(entity, sessionKey)
 			result, err = web.rdb.HGetAll(web.ctx, sessionKey).Result()
 			if err != nil || len(result) == 0 {
 				log.Println("session not found after add:", err)
-				return nil
 			}
+
+			return entity
 		}
 
 		id, err := strconv.Atoi(result["id"])

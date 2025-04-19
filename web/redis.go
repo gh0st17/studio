@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -11,7 +12,14 @@ func saveToRedis[T any](web *Web, key string, data []T) error {
 	if err != nil {
 		return err
 	}
-	return web.rdb.Set(web.ctx, key, bytes, time.Hour).Err()
+
+	err = web.rdb.Set(web.ctx, key, bytes, time.Hour).Err()
+	if err != nil {
+		return err
+	}
+	log.Printf("key '%s' saved to Redis", key)
+
+	return nil
 }
 
 func loadFromRedis[T any](web *Web, key string) ([]T, error) {
@@ -24,6 +32,8 @@ func loadFromRedis[T any](web *Web, key string) ([]T, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("key '%s' loaded from Redis", key)
 	return out, nil
 }
 

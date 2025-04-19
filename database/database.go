@@ -160,7 +160,7 @@ func (db *StudioDB) CreateOrder(cid uint, models []bt.Model) (err error) {
 		return errtype.ErrDataBase(errtype.Join(ErrBegin, err))
 	}
 
-	if row := db.queryRow(insertOrderQuery, []any{}, tx); row.Err() != nil {
+	if row := db.queryRow(insertOrderQuery, []any{cid}, tx); row.Err() != nil {
 		tx.Rollback()
 		return row.Err()
 	} else {
