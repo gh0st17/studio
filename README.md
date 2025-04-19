@@ -5,7 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gh0st17/studio/releases/latest"><img src="https://img.shields.io/github/v/release/gh0st17/studio?style=plastic"></a>
   <img src="https://img.shields.io/badge/license-MIT-blue?style=plastic">
   <img src="https://tokei.rs/b1/github/gh0st17/studio?category=code">
 </p>
