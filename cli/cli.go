@@ -122,7 +122,7 @@ func (c *CLI) displayTable(table interface{}) {
 		c.displayOrders(orders)
 	} else if orderItems, ok := table.([]bt.OrderItem); ok {
 		c.displayOrderItems(orderItems)
-	} else if models, ok := table.([]bt.Model); ok {
+	} else if models, ok := table.(map[uint]bt.Model); ok {
 		c.displayModels(models)
 	} else {
 		panic("Неизвестный тип таблицы")
@@ -152,7 +152,7 @@ func (c *CLI) displayOrderItems(orderItems []bt.OrderItem) {
 	pause()
 }
 
-func (c *CLI) displayModels(models []bt.Model) {
+func (c *CLI) displayModels(models map[uint]bt.Model) {
 	fmt.Print(Models(models))
 }
 
