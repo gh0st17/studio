@@ -53,9 +53,10 @@ func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 
 	pong, err := web.rdb.Ping(web.ctx).Result()
 	if err != nil {
-		panic(err)
+		log.Printf("REDIS: %v", err)
+	} else {
+		log.Println("REDIS", pong)
 	}
-	log.Println("REDIS", pong)
 
 	web.srv = web.initHttp(httpSocket)
 
@@ -166,7 +167,10 @@ func (web *Web) checkCookies(c *gin.Context) {
 }
 
 func (web *Web) checkSession(c *gin.Context) {
-	// Список защищённых путей
+	if _, err := web.rdb.Ping(web.ctx).Result(); err != nil {
+		c.Next()
+	}
+
 	protectedPaths := map[string]bool{
 		"/":             true,
 		"/orders":       true,
@@ -174,7 +178,6 @@ func (web *Web) checkSession(c *gin.Context) {
 		"/create-order": true,
 	}
 
-	// Проверяем, защищён ли путь
 	if protectedPaths[c.Request.URL.Path] {
 		entity := web.entityFromSession(c)
 		if entity == nil {
