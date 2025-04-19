@@ -5,7 +5,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	bt "studio/basic_types"
+
+	bt "github.com/gh0st17/studio/basic_types"
 
 	"github.com/gin-gonic/gin"
 )

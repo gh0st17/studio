@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	bt "studio/basic_types"
-	"studio/studio"
+
+	bt "github.com/gh0st17/studio/basic_types"
+	"github.com/gh0st17/studio/studio"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"

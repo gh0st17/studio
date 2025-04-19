@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	bt "studio/basic_types"
 	"time"
+
+	bt "github.com/gh0st17/studio/basic_types"
 
 	"github.com/gin-gonic/gin"
 )

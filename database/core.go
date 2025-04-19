@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"reflect"
-	"studio/errtype"
+
+	"github.com/gh0st17/studio/errtype"
 
 	_ "github.com/lib/pq"
 )

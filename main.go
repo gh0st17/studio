@@ -1,11 +1,11 @@
 package main
 
 import (
-	"studio/cli"
-	"studio/errtype"
-	"studio/params"
-	"studio/ui"
-	"studio/web"
+	"github.com/gh0st17/studio/cli"
+	"github.com/gh0st17/studio/errtype"
+	"github.com/gh0st17/studio/params"
+	"github.com/gh0st17/studio/ui"
+	"github.com/gh0st17/studio/web"
 )
 
 func main() {
