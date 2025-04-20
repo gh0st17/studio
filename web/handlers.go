@@ -72,40 +72,43 @@ func (web *Web) mainHandler(c *gin.Context) {
 }
 
 func (web *Web) ordersHandler(c *gin.Context) {
-	var err error
 
 	entity := web.loadEntity(c)
 	if c.Request.Method == http.MethodPost {
-		action := c.PostForm("action")
-		orderId := c.PostForm("order_id")
-		customerId := c.PostForm("c_id")
+		actionForm := c.PostForm("action")
+		orderIdForm := c.PostForm("order_id")
+		customerIdForm := c.PostForm("c_id")
 
-		var cId uint64
+		var (
+			customerId uint64
+			orderId    uint64
+			err        error
+		)
 
-		if customerId == "" {
-			cId = uint64(entity.GetId())
+		if customerIdForm == "" {
+			customerId = uint64(entity.GetId())
 		} else {
-			cId, err = strconv.ParseUint(customerId, 10, 32)
+			customerId, err = strconv.ParseUint(customerIdForm, 10, 32)
 			if err != nil {
 				web.alert(c, http.StatusBadRequest, wrongClientID)
 				return
 			}
 		}
 
-		oId, err := strconv.ParseUint(orderId, 10, 32)
+		orderId, err = strconv.ParseUint(orderIdForm, 10, 32)
 		if err != nil {
 			web.alert(c, http.StatusBadRequest, wrongOrderID)
 			return
 		}
 
 		err = func() error {
-			switch action {
+			switch actionForm {
 			case "process":
-				return web.st.ProcessOrder(entity, uint(oId))
+				return web.st.ProcessOrder(entity, uint(orderId))
 			case "release":
-				return web.st.ReleaseOrder(entity, uint(oId))
+				return web.st.ReleaseOrder(entity, uint(orderId))
 			case "cancel":
-				return web.st.CancelOrder(entity, uint(oId))
+				return web.st.CancelOrder(entity, uint(orderId))
 			default:
 				return nil
 			}
@@ -117,7 +120,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 			return
 		}
 
-		invalidateOrdersCache(web, uint(cId))
+		invalidateOrdersCache(web, uint(customerId))
 	}
 
 	var orders []Order
@@ -134,34 +137,46 @@ func (web *Web) ordersHandler(c *gin.Context) {
 
 func (web *Web) orderItemsHandler(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
-		orderID := c.Query("id")
+		orderIdGet := c.Query("id")
 
-		if orderID == "" {
+		if orderIdGet == "" {
 			web.alert(c, http.StatusBadRequest, missingOrderID)
 			return
 		}
 
-		o_id, err := strconv.ParseUint(orderID, 10, 32)
+		orderId, err := strconv.ParseUint(orderIdGet, 10, 32)
 		if err != nil {
 			web.alert(c, http.StatusBadRequest, wrongOrderID)
 			return
 		}
 
 		var orderItems []bt.OrderItem
-
 		entity := web.loadEntity(c)
-		key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), o_id)
-		if web.rdbPresent.Load() && redisArrayExists(web, key) {
-			orderItems, _ = loadFromRedis[bt.OrderItem](web, key)
-		} else {
-			if orderItems, err = web.st.OrderItems(entity, uint(o_id)); err != nil {
-				web.alert(c, http.StatusForbidden, err.Error())
-				log.Println("orders items error:", err)
-				return
+		key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), orderId)
+
+		loadFromDB := func() bool {
+			if orderItems, err = web.st.OrderItems(entity, uint(orderId)); err != nil {
+				web.alert(c, http.StatusBadRequest, err.Error())
+				log.Println("load orders items error:", err)
+				return false
 			}
 
 			if web.rdbPresent.Load() {
 				go saveToRedis(web, key, orderItems)
+			}
+
+			return true
+		}
+
+		if web.rdbPresent.Load() && redisArrayExists(web, key) {
+			if orderItems, err = loadFromRedis[bt.OrderItem](web, key); err != nil {
+				if !loadFromDB() {
+					return
+				}
+			}
+		} else {
+			if !loadFromDB() {
+				return
 			}
 		}
 
