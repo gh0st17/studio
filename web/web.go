@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"sync/atomic"
+	"time"
 
 	bt "github.com/gh0st17/studio/basic_types"
 	"github.com/gh0st17/studio/studio"
@@ -83,6 +84,8 @@ func (web *Web) Run() error {
 		}
 	}()
 
+	web.startRedisMonitor()
+
 	if err := web.srv.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
 			log.Println("Веб-сервер закрыт")
@@ -108,7 +111,6 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 
 	router.Use(
 		web.checkCookies,
-		web.isRedisPresent,
 		metricsMiddleware(),
 	)
 
@@ -139,6 +141,27 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 		Addr:    webSocket,
 		Handler: router,
 	}
+}
+
+func (web *Web) startRedisMonitor() {
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if _, err := web.rdb.Ping(web.ctx).Result(); err != nil {
+					log.Printf("Redis is offline: %v", err)
+					web.rdbPresent.Store(false)
+				} else {
+					web.rdbPresent.Store(true)
+				}
+			case <-web.ctx.Done():
+				return
+			}
+		}
+	}()
 }
 
 func (web *Web) checkCookies(c *gin.Context) {

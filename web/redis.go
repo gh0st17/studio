@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 func saveToRedis[T any](web *Web, key string, data []T) error {
@@ -47,15 +45,4 @@ func redisArrayExists(web *Web, key string) bool {
 func invalidateOrdersCache(web *Web, customer_id uint) {
 	web.rdb.Del(web.ctx, "orders:0")
 	web.rdb.Del(web.ctx, fmt.Sprintf("orders:%d", customer_id))
-}
-
-func (web *Web) isRedisPresent(*gin.Context) {
-	go func() {
-		if _, err := web.rdb.Ping(web.ctx).Result(); err != nil {
-			log.Printf("Redis is offline: %v", err)
-			web.rdbPresent.Store(false)
-		} else {
-			web.rdbPresent.Store(true)
-		}
-	}()
 }

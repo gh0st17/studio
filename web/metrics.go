@@ -20,7 +20,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "Histogram of response time for handler",
-			Buckets: prometheus.DefBuckets, // можно задать свои
+			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"method", "path"},
 	)
@@ -30,12 +30,12 @@ func metricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		c.Next() // Выполнить обработчик
+		c.Next()
 
 		duration := time.Since(start).Seconds()
 		path := c.FullPath()
 		if path == "" {
-			path = c.Request.URL.Path // fallback
+			path = c.Request.URL.Path
 		}
 
 		httpRequestsTotal.WithLabelValues(c.Request.Method, path).Inc()
