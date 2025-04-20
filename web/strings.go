@@ -8,4 +8,6 @@ const (
 	wrongOrderID      = "ID заказа указан неверно"
 	missingOrderID    = "Не указан ID заказа"
 	emptyOrders       = "Вы еще не сделали ни одного заказа"
+	modelNotFound     = "Модель не найдена"
+	wrongModelID      = "ID модели указан неверно"
 )

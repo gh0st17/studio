@@ -21,7 +21,7 @@ func (web *Web) loginHandler(c *gin.Context) {
 func (web *Web) doLoginHandler(c *gin.Context) {
 	if c.Request.Method == http.MethodPost {
 		if err := c.Request.ParseForm(); err != nil {
-			c.String(http.StatusBadRequest, "ParseForm() error")
+			web.alert(c, http.StatusBadRequest, err.Error())
 			return
 		}
 

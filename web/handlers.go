@@ -157,6 +157,7 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 			if orderItems, err = web.st.OrderItems(entity, uint(o_id)); err != nil {
 				web.alert(c, http.StatusForbidden, err.Error())
 				log.Println("orders items error:", err)
+				return
 			}
 
 			if web.rdbPresent.Load() {
@@ -186,7 +187,7 @@ func (web *Web) createOrderHandler(c *gin.Context) {
 
 	if c.Request.Method == http.MethodPost {
 		if err := c.Request.ParseForm(); err != nil {
-			c.String(http.StatusBadRequest, "Ошибка парсинга формы")
+			web.alert(c, http.StatusBadRequest, err.Error())
 			log.Println("create order parsing error:", err)
 			return
 		}
@@ -201,7 +202,7 @@ func (web *Web) createOrderHandler(c *gin.Context) {
 
 		err := web.st.CreateOrder(entity, modelIds)
 		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+			web.alert(c, http.StatusBadRequest, err.Error())
 			log.Println("create order error:", err)
 			return
 		}
@@ -218,14 +219,17 @@ func (web *Web) viewModelHandler(c *gin.Context) {
 		modelID := c.Query("id")
 		mid, err := strconv.ParseUint(modelID, 10, 32)
 		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+			web.alert(c, http.StatusBadRequest, wrongModelID)
 			log.Println("view model error:", err)
 			return
 		}
 
-		model := web.st.Models()[uint(mid)]
+		if model, ok := web.st.Models()[uint(mid)]; ok {
+			c.HTML(http.StatusOK, "model.html", model)
+		} else {
+			web.alert(c, http.StatusBadRequest, modelNotFound)
+		}
 
-		c.HTML(http.StatusOK, "model.html", model)
 		return
 	}
 
