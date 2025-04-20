@@ -3,7 +3,6 @@ package web
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	bt "github.com/gh0st17/studio/basic_types"
@@ -17,7 +16,7 @@ type Order struct {
 	ReleaseDate string
 }
 
-func loadOrders(web *Web, entity bt.Entity, present bool, c *gin.Context) []Order {
+func loadOrders(web *Web, entity bt.Entity) []Order {
 	var (
 		orders []Order
 		key    string = "orders:0"
@@ -27,7 +26,7 @@ func loadOrders(web *Web, entity bt.Entity, present bool, c *gin.Context) []Orde
 		key = "orders:" + fmt.Sprint(entity.GetId())
 	}
 
-	if present {
+	if web.rdbPresent.Load() {
 		var err error
 		orders, err = loadFromRedis[Order](web, key)
 		if err == nil {
@@ -37,19 +36,13 @@ func loadOrders(web *Web, entity bt.Entity, present bool, c *gin.Context) []Orde
 
 	rawOrders, err := web.st.Orders(entity)
 	if err != nil {
-		web.alert(c, http.StatusInternalServerError, err.Error())
-		log.Println("orders error:", err)
+		log.Println("load orders error:", err)
 		return nil
 	}
 	orders = transformOrders(rawOrders)
 
-	if present {
+	if len(orders) > 0 && web.rdbPresent.Load() {
 		go saveToRedis(web, key, orders)
-	}
-
-	if len(orders) == 0 {
-		web.alert(c, http.StatusOK, emptyOrders)
-		return nil
 	}
 
 	return orders
@@ -76,4 +69,30 @@ func transformOrders(rawOrders []bt.Order) []Order {
 	}
 
 	return orders
+}
+
+func (web *Web) loadOrderItems(orderId uint, c *gin.Context) (orderItems []bt.OrderItem) {
+	entity := web.loadEntity(c)
+	key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), orderId)
+
+	var err error
+
+	if web.rdbPresent.Load() && redisArrayExists(web, key) {
+		orderItems, err = loadFromRedis[bt.OrderItem](web, key)
+		if err != nil {
+			return orderItems
+		}
+	}
+
+	orderItems, err = web.st.OrderItems(entity, uint(orderId))
+	if err != nil {
+		log.Println("load orders items error:", err)
+		return nil
+	}
+
+	if web.rdbPresent.Load() {
+		go saveToRedis(web, key, orderItems)
+	}
+
+	return orderItems
 }

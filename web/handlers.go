@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -72,7 +71,6 @@ func (web *Web) mainHandler(c *gin.Context) {
 }
 
 func (web *Web) ordersHandler(c *gin.Context) {
-
 	entity := web.loadEntity(c)
 	if c.Request.Method == http.MethodPost {
 		actionForm := c.PostForm("action")
@@ -123,8 +121,9 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		invalidateOrdersCache(web, uint(customerId))
 	}
 
-	var orders []Order
-	if orders = loadOrders(web, entity, web.rdbPresent.Load(), c); orders == nil {
+	orders := loadOrders(web, entity)
+	if len(orders) == 0 {
+		web.alert(c, http.StatusOK, emptyOrders)
 		return
 	}
 
@@ -150,34 +149,10 @@ func (web *Web) orderItemsHandler(c *gin.Context) {
 			return
 		}
 
-		var orderItems []bt.OrderItem
-		entity := web.loadEntity(c)
-		key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), orderId)
-
-		loadFromDB := func() bool {
-			if orderItems, err = web.st.OrderItems(entity, uint(orderId)); err != nil {
-				web.alert(c, http.StatusBadRequest, err.Error())
-				log.Println("load orders items error:", err)
-				return false
-			}
-
-			if web.rdbPresent.Load() {
-				go saveToRedis(web, key, orderItems)
-			}
-
-			return true
-		}
-
-		if web.rdbPresent.Load() && redisArrayExists(web, key) {
-			if orderItems, err = loadFromRedis[bt.OrderItem](web, key); err != nil {
-				if !loadFromDB() {
-					return
-				}
-			}
-		} else {
-			if !loadFromDB() {
-				return
-			}
+		orderItems := web.loadOrderItems(uint(orderId), c)
+		if orderItems == nil {
+			web.alert(c, http.StatusInternalServerError, errLoadOrderItems)
+			return
 		}
 
 		var totalPrice float64
