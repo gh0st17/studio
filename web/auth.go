@@ -36,7 +36,7 @@ func (web *Web) doLoginHandler(c *gin.Context) {
 		sessionID := uuid.New().String()
 
 		if web.rdbPresent.Load() {
-			web.addSession(entity, sessionID)
+			web.addSession(entity, "session:"+sessionID)
 		}
 
 		c.SetCookie("session_id", sessionID, 3600*24, "/", "", false, true)
