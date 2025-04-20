@@ -67,6 +67,7 @@ func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 
 	prometheus.MustRegister(httpRequestsTotal)
 	prometheus.MustRegister(httpRequestDuration)
+	prometheus.MustRegister(serverErrors)
 
 	return web, nil
 }
@@ -111,7 +112,8 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 
 	router.Use(
 		web.checkCookies,
-		metricsMiddleware(),
+		requestsMetric,
+		serverErrorsMetric,
 	)
 
 	// Маршруты
