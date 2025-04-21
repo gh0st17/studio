@@ -78,6 +78,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		customerIdForm := c.PostForm("c_id")
 
 		var (
+			btOrders   []bt.Order
 			customerId uint64
 			orderId    uint64
 			err        error
@@ -99,6 +100,11 @@ func (web *Web) ordersHandler(c *gin.Context) {
 			return
 		}
 
+		orders := loadOrders(web, entity)
+		for _, o := range orders {
+			btOrders = append(btOrders, o.Order)
+		}
+
 		err = func() error {
 			switch actionForm {
 			case "process":
@@ -106,7 +112,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 			case "release":
 				return web.st.ReleaseOrder(entity, uint(orderId))
 			case "cancel":
-				return web.st.CancelOrder(entity, uint(orderId))
+				return web.st.CancelOrder(entity, uint(orderId), btOrders)
 			default:
 				return nil
 			}

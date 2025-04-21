@@ -63,12 +63,17 @@ func (c *CLI) Run() (err error) {
 			}
 		case "Просмотреть содержимое заказa":
 			id, _ := userinput.PromptUint("Выберите id заказа")
-			if orderItems, err := c.st.OrderItems(c.ent, id[0]); err == nil {
-				c.displayOrderItems(orderItems)
+			if orders, err := c.st.Orders(c.ent); err == nil {
+				if orderItems, err := c.st.OrderItems(c.ent, id[0], orders); err == nil {
+					c.displayOrderItems(orderItems)
+				}
 			}
 		case "Отменить заказ":
 			id, _ := userinput.PromptUint("Выберите id заказа")
-			err = c.st.CancelOrder(c.ent, id[0])
+			var orders []bt.Order
+			if orders, err = c.st.Orders(c.ent); err == nil {
+				err = c.st.CancelOrder(c.ent, id[0], orders)
+			}
 		case "Выполнить заказ":
 			id, _ := userinput.PromptUint("Выберите id заказа")
 			err = c.st.ProcessOrder(c.ent, id[0])

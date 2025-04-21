@@ -75,16 +75,24 @@ func (web *Web) loadOrderItems(orderId uint, c *gin.Context) (orderItems []bt.Or
 	entity := web.loadEntity(c)
 	key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), orderId)
 
-	var err error
+	var (
+		btOrders []bt.Order
+		err      error
+	)
 
 	if web.rdbPresent.Load() && redisArrayExists(web, key) {
 		orderItems, err = loadFromRedis[bt.OrderItem](web, key)
-		if err != nil {
+		if err == nil {
 			return orderItems
 		}
 	}
 
-	orderItems, err = web.st.OrderItems(entity, uint(orderId))
+	orders := loadOrders(web, entity)
+	for _, o := range orders {
+		btOrders = append(btOrders, o.Order)
+	}
+
+	orderItems, err = web.st.OrderItems(entity, uint(orderId), btOrders)
 	if err != nil {
 		log.Println("load orders items error:", err)
 		return nil
