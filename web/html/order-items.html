@@ -1,47 +1,26 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Содержимое заказа</title>
-  <link href="/styles/style.css" rel="stylesheet" type="text/css">
-</head>
-<body>
-  <div class="content-table">
-  <h2>Содержимое заказа</h2>
-
-  {{ range $i, $orderItem := .OrderItems }}
-    <h3>Позиция: {{ inc $i }}</h3>
-    <p><strong>{{ .Model.Title }}</strong> (Артикул: {{ .Model.Id }}):</p>
-    <div class="order-table">
-    <table>
-      <thead>
+{{ range $i, $orderItem := .OrderItems }}
+  <p style="text-align: center;"><strong>Позиция {{ inc $i }}: {{ .Model.Title }}</strong> (Артикул {{ .Model.Id }})</p>
+  <div class="order-table">
+  <table>
+    <thead>
+      <tr>
+        <th>Материал</th>
+        <th>Цена за метр</th>
+        <th>Длина (метры)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range $matId, $mat := $orderItem.Model.Materials }}
         <tr>
-          <th>Материал</th>
-          <th>Цена за метр</th>
-          <th>Длина (метры)</th>
+          <td>{{ $mat.Title }}</td>
+          <td>{{ $mat.Price }}</td>
+          <td>{{ index $orderItem.Model.MatLeng $matId }}</td> 
         </tr>
-      </thead>
-      <tbody>
-        {{ range $matId, $mat := $orderItem.Model.Materials }}
-          <tr>
-            <td>{{ $mat.Title }}</td>
-            <td>{{ $mat.Price }}</td>
-            <td>{{ index $orderItem.Model.MatLeng $matId }}</td> 
-          </tr>
-        {{ end }}
-      </tbody>
-    </table>
-    </div>
-    <p><strong>Стоимость изготовления: {{ $orderItem.UnitPrice }}</strong></p>
-    <hr>
-  {{ end }}
-
-  <h3>Общая стоимость заказа: {{ .TotalPrice }}</h3>
+      {{ end }}
+    </tbody>
+  </table>
   </div>
-  <center>
-    <a href="/" class="a-main">Главное меню</a>
-  </center>
-
-</body>
-</html>
+  <p><strong>Стоимость изготовления: {{ $orderItem.UnitPrice }}</strong></p>
+  <hr>
+{{ end }}
+<p style="margin-bottom:0;"><strong>Общая стоимость заказа: {{ .TotalPrice }}</strong></p>

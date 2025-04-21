@@ -90,6 +90,14 @@ body, html {
   z-index: -1;
 }
 
+.order-table .item-tr:nth-child(odd):hover {
+  filter: brightness(1.1);
+}
+
+.order-table .item-tr:nth-child(even):hover {
+  filter: brightness(0.9);
+}
+
 .order-table tr:nth-child(odd) {
   background-color: #9abeb2cc;
 }

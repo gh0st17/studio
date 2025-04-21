@@ -5,16 +5,23 @@
   left: 0; top: 0;
   width: 100%; height: 100%;
   background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
 }
 
 #modal .modal-content {
-  background: rgba(42, 112, 192, 0.65);
+  background: #568cc9;
   padding: 20px;
   border-radius: 16px;
   width: 400px;
   max-width: 90%;
-  margin: 100px auto;
+  margin: auto 0;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  scrollbar-width: none;
   position: relative;
+  box-sizing: border-box;
 }
 
 #modal .close {

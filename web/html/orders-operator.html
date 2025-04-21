@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Список заказов</title>
   <link href="/styles/style.css" rel="stylesheet" type="text/css">
+  <link href="/styles/modal.css" rel="stylesheet" type="text/css">
+  <script src="/scripts/modal.js"></script>
 </head>
 <body>
   <div class="content-table">
@@ -34,8 +36,8 @@
         </thead>
         <tbody>
           {{ range .Orders }}
-            <tr>
-              <td><a href="/order-items?id={{ .Id }}">{{ .Id }}</a></td>
+          <tr class="item-tr" data-url="order-items" data-id="{{ .Id }}">
+              <td>{{ .Id }}</td>
               <td>{{ .CustomerName }}</td>
               <td>{{ .EmployeeName }}</td>
               <td>
@@ -81,6 +83,13 @@
           {{ end }}
         </tbody>
       </table>
+    </div>
+    <div id="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-header">Заказ №</h2>
+        <div id="modal-body">Загрузка...</div>
+      </div>
     </div>
   </div>
   <center>
