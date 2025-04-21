@@ -78,7 +78,6 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		customerIdForm := c.PostForm("c_id")
 
 		var (
-			btOrders   []bt.Order
 			customerId uint64
 			orderId    uint64
 			err        error
@@ -101,8 +100,9 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		}
 
 		orders := loadOrders(web, entity)
-		for _, o := range orders {
-			btOrders = append(btOrders, o.Order)
+		btOrders := make([]bt.Order, len(orders))
+		for i, o := range orders {
+			btOrders[i] = o.Order
 		}
 
 		err = func() error {
@@ -188,11 +188,11 @@ func (web *Web) createOrderHandler(c *gin.Context) {
 			return
 		}
 
-		modelsIds := c.PostFormArray("model_ids")
-		var modelIds []uint
-		for _, mid := range modelsIds {
+		modelIdsStr := c.PostFormArray("model_ids")
+		modelIds := make([]uint, len(modelIdsStr))
+		for i, mid := range modelIdsStr {
 			if id, err := strconv.ParseUint(mid, 10, 32); err == nil {
-				modelIds = append(modelIds, uint(id))
+				modelIds[i] = uint(id)
 			}
 		}
 

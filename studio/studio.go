@@ -51,9 +51,9 @@ func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
 		return errtype.ErrRuntime(ErrEmptyCart)
 	}
 
-	var cartModels []bt.Model
-	for _, id := range ids {
-		cartModels = append(cartModels, s.models[id])
+	cartModels := make([]bt.Model, len(ids))
+	for i, id := range ids {
+		cartModels[i] = s.models[id]
 	}
 
 	err := s.sDB.CreateOrder(ent.GetId(), cartModels)

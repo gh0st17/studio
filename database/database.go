@@ -88,11 +88,11 @@ func (db *StudioDB) Registration(c bt.Customer) (err error) {
 func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	var (
 		query string
-		args  []any
+		args  []any = make([]any, 1)
 	)
 	if cid > 0 {
 		query = fetchOrdersQueryCid
-		args = append(args, cid)
+		args[0] = cid
 	} else {
 		query = fetchOrdersQueryAll
 	}
@@ -110,24 +110,19 @@ func (db *StudioDB) FetchOrderItems(o_id uint, models map[uint]bt.Model) ([]bt.O
 		UnitPrice       float64
 	}
 
-	var (
-		orderItems    []bt.OrderItem
-		rawOrderItems []RawOrderItem
-	)
-
+	var rawOrderItems []RawOrderItem
 	if err := db.fetchTable(fetchOrderItemsQuery, []any{o_id}, &rawOrderItems); err != nil {
 		return nil, err
 	}
 
-	for _, rawOrderItem := range rawOrderItems {
-		orderItems = append(orderItems,
-			bt.OrderItem{
-				Id:        rawOrderItem.Id,
-				O_id:      rawOrderItem.O_id,
-				Model:     models[rawOrderItem.Model],
-				UnitPrice: rawOrderItem.UnitPrice,
-			},
-		)
+	orderItems := make([]bt.OrderItem, len(rawOrderItems))
+	for i, rawOrderItem := range rawOrderItems {
+		orderItems[i] = bt.OrderItem{
+			Id:        rawOrderItem.Id,
+			O_id:      rawOrderItem.O_id,
+			Model:     models[rawOrderItem.Model],
+			UnitPrice: rawOrderItem.UnitPrice,
+		}
 	}
 
 	return orderItems, nil

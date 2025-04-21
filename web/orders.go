@@ -49,8 +49,8 @@ func loadOrders(web *Web, entity bt.Entity) []Order {
 }
 
 func transformOrders(rawOrders []bt.Order) []Order {
-	var orders []Order
-	for _, rawO := range rawOrders {
+	var orders []Order = make([]Order, len(rawOrders))
+	for i, rawO := range rawOrders {
 		releaseDate := func() string {
 			if rawO.ReleaseDate.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
 				return "---"
@@ -65,7 +65,7 @@ func transformOrders(rawOrders []bt.Order) []Order {
 			ReleaseDate: releaseDate,
 		}
 
-		orders = append(orders, o)
+		orders[i] = o
 	}
 
 	return orders
@@ -88,8 +88,9 @@ func (web *Web) loadOrderItems(orderId uint, c *gin.Context) (orderItems []bt.Or
 	}
 
 	orders := loadOrders(web, entity)
-	for _, o := range orders {
-		btOrders = append(btOrders, o.Order)
+	btOrders = make([]bt.Order, len(orders))
+	for i, o := range orders {
+		btOrders[i] = o.Order
 	}
 
 	orderItems, err = web.st.OrderItems(entity, uint(orderId), btOrders)
