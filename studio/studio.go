@@ -79,7 +79,7 @@ func (s *Studio) Orders(ent bt.Entity) ([]bt.Order, error) {
 }
 
 func (s *Studio) OrderItems(ent bt.Entity, id uint, orders []bt.Order) ([]bt.OrderItem, error) {
-	if ok, err := s.checkOrder(ent, id, orders); err != nil {
+	if ok, err := s.checkOrder(id, orders); err != nil {
 		return nil, err
 	} else if ok {
 		return s.sDB.FetchOrderItems(id, s.models)
@@ -89,7 +89,7 @@ func (s *Studio) OrderItems(ent bt.Entity, id uint, orders []bt.Order) ([]bt.Ord
 }
 
 func (s *Studio) CancelOrder(ent bt.Entity, id uint, orders []bt.Order) error {
-	if ok, err := s.checkOrder(ent, id, orders); err != nil {
+	if ok, err := s.checkOrder(id, orders); err != nil {
 		return err
 	} else if !ok {
 		return ErrPerm
@@ -141,7 +141,7 @@ func (s *Studio) initTables() (err error) {
 	return nil
 }
 
-func (s *Studio) checkOrder(ent bt.Entity, id uint, orders []bt.Order) (bool, error) {
+func (s *Studio) checkOrder(id uint, orders []bt.Order) (bool, error) {
 	for _, o := range orders {
 		if o.Id == id {
 			return true, nil
