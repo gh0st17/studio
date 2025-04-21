@@ -62,5 +62,5 @@
   -registration
     	Регистрация нового клиента для CLI
   -type string
-    	Тип интерфейса: CLI, Web
+    	Тип интерфейса: CLI, Web (default "web")
 ```

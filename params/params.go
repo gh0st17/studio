@@ -48,7 +48,7 @@ func ParseParams() (p *Params, err error) {
 	p = &Params{}
 	flag.Usage = printHelp
 	var interfaceType string
-	flag.StringVar(&interfaceType, "type", "", interfaceTypeDesc)
+	flag.StringVar(&interfaceType, "type", "web", interfaceTypeDesc)
 	flag.StringVar(&p.HttpSoc, "http", ":8080", httpSocDesc)
 	flag.StringVar(&p.RedisSoc, "redis", "localhost:6379", redisSocDesc)
 	flag.StringVar(&p.PgSqlSoc, "pgsql", "localhost:5432", pgSqlSocDesc)
