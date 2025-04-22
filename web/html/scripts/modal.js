@@ -24,8 +24,19 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Открытие модалки по клику на ссылку модели
-  document.querySelectorAll('.item-tr').forEach(link => {
-    link.addEventListener('click', function (e) {
+  document.querySelectorAll('.item-tr').forEach(row => {
+    row.addEventListener('click', function (e) {
+      if (
+        e.target.tagName === 'BUTTON' ||
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'A' ||
+        e.target.closest('button') ||
+        e.target.closest('input') ||
+        e.target.closest('a')
+      ) {
+        return; // Прерываем, не открываем модальное окно
+      }
+
       e.preventDefault();
       const id = this.dataset.id;
       const url = this.dataset.url;

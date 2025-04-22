@@ -7,12 +7,13 @@
   <link href="/styles/style.css" rel="stylesheet" type="text/css">
   <link href="/styles/modal.css" rel="stylesheet" type="text/css">
   <script src="/scripts/modal.js"></script>
+  <script src="/scripts/sorttable.js"></script>
 </head>
 <body>
   <div class="content-table">
     <h2>Список заказов</h2>
     <div class="order-table">
-      <table>
+      <table id="sort-table">
         <colgroup>
           <col style="width: 80px;"> <!-- Номер заказа -->
           <col style="width: 165px;"> <!-- Клиент -->
@@ -24,14 +25,14 @@
         </colgroup>
         <thead>
           <tr>
-            <th>Номер заказа</th>
-            <th>Клиент</th>
-            <th>Оператор</th>
-            <th>Статус</th>
-            <th>Общая стоимость</th>
-            <th>Дата создания</th>
-            <th>Дата выдачи</th>
-            <th>Действие</th>
+            <th data-index="0">Номер заказа</th>
+            <th data-index="1">Клиент</th>
+            <th data-index="2">Оператор</th>
+            <th data-index="3">Статус</th>
+            <th data-index="4">Общая стоимость</th>
+            <th data-index="5">Дата создания</th>
+            <th data-index="6">Дата выдачи</th>
+            <th data-index="7">Действие</th>
           </tr>
         </thead>
         <tbody>

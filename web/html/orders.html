@@ -7,20 +7,21 @@
   <link href="/styles/style.css" rel="stylesheet" type="text/css">
   <link href="/styles/modal.css" rel="stylesheet" type="text/css">
   <script src="/scripts/modal.js"></script>
+  <script src="/scripts/sorttable.js"></script>
 </head>
 <body>
   <div class="content-table">
   <h2>Список заказов</h2>
     <div class="order-table">
-      <table>
+      <table id="sort-table">
         <thead>
           <tr>
-            <th>Номер заказа</th>
-            <th>Статус</th>
-            <th>Общая стоимость</th>
-            <th>Дата создания</th>
-            <th>Дата выдачи</th>
-            <th>Действие</th>
+            <th data-index="0">Номер заказа</th>
+            <th data-index="1">Статус</th>
+            <th data-index="2">Общая стоимость</th>
+            <th data-index="3">Дата создания</th>
+            <th data-index="4">Дата выдачи</th>
+            <th data-index="5">Действие</th>
           </tr>
         </thead>
         <tbody>
