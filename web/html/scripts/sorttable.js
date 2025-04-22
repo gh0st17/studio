@@ -5,20 +5,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('DOMContentLoaded', () => {
     const sortIndex = parseInt(localStorage.getItem('sortIndex'));
-    const sortOrder = localStorage.getItem('sortOrder');
+    const ascending = localStorage.getItem('ascending');
   
-    if (!isNaN(sortIndex) && (sortOrder === 'asc' || sortOrder === 'desc')) {
-      sortTableByColumn(sortIndex, sortOrder === 'asc');
+    if (!isNaN(sortIndex) && !isNaN(ascending)) {
+      sortTableByColumn(sortIndex, ascending);
     } else {
-      // По умолчанию сортировка по первому столбцу по возрастанию
       sortTableByColumn(0, true);
     }
   });
 
-  // Сохраняем оригинальный текст заголовков в data-label
   headers.forEach(th => {
     th.dataset.label = th.textContent.trim();
-    th.dataset.order = ''; // по умолчанию без сортировки
+    th.dataset.order = '';
   });
 
   function updateHeaderArrows(activeIndex, ascending) {
@@ -43,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }  
 
   function parseValue(val) {
+    if (val === '---' || !val) return null;
+
     const num = parseFloat(val.replace(/[^\d.-]/g, ''));
     if (!isNaN(num)) return num;
 
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     rows.forEach(row => tbody.appendChild(row));
     updateHeaderArrows(index, ascending);
     localStorage.setItem('sortIndex', index);
-    localStorage.setItem('sortOrder', ascending ? 'asc' : 'desc');
+    localStorage.setItem('ascending', ascending);
   }
 
   // Обработчики кликов по заголовкам

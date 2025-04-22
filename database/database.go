@@ -88,11 +88,11 @@ func (db *StudioDB) Registration(c bt.Customer) (err error) {
 func (db *StudioDB) FetchOrders(cid uint) (orders []bt.Order, err error) {
 	var (
 		query string
-		args  []any = make([]any, 1)
+		args  []any
 	)
 	if cid > 0 {
 		query = fetchOrdersQueryCid
-		args[0] = cid
+		args = append(args, cid)
 	} else {
 		query = fetchOrdersQueryAll
 	}
