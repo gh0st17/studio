@@ -105,8 +105,9 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 
 	// Загрузка шаблонов
 	router.FuncMap = template.FuncMap{
-		"inc": inc,
-		"eq":  eq,
+		"inc":     inc,
+		"eq":      eq,
+		"timeStr": timeToStr,
 	}
 	router.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
 
@@ -200,6 +201,14 @@ func inc(a int) int {
 
 func eq(a bt.OrderStatus, b uint) bool {
 	return uint(a) == b
+}
+
+func timeToStr(t time.Time) string {
+	if t.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		return "---"
+	} else {
+		return t.Format(bt.DateFormat)
+	}
 }
 
 func customerOptions() []string {

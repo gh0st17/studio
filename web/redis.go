@@ -1,14 +1,15 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 func saveToRedis[T any](web *Web, key string, data []T) error {
-	bytes, err := json.Marshal(data)
+	bytes, err := msgpack.Marshal(data)
 	if err != nil {
 		return err
 	}
@@ -28,7 +29,7 @@ func loadFromRedis[T any](web *Web, key string) ([]T, error) {
 		return nil, err
 	}
 	var out []T
-	err = json.Unmarshal([]byte(val), &out)
+	err = msgpack.Unmarshal([]byte(val), &out)
 	if err != nil {
 		return nil, err
 	}

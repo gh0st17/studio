@@ -41,8 +41,8 @@
                 {{ .Status }}
               </td>
               <td>{{ .TotalPrice }}</td>
-              <td>{{ .CreateDate }}</td>
-              <td>{{ .ReleaseDate }}</td>
+              <td>{{ timeStr .CreateDate }}</td>
+              <td>{{ timeStr .ReleaseDate }}</td>
               <td>
                 <form method="post">
                   <input type="hidden" name="order_id" value="{{ .Id }}">

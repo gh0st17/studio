@@ -100,11 +100,6 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		}
 
 		orders := loadOrders(web, entity)
-		btOrders := make([]bt.Order, len(orders))
-		for i, o := range orders {
-			btOrders[i] = o.Order
-		}
-
 		err = func() error {
 			switch actionForm {
 			case "process":
@@ -112,7 +107,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 			case "release":
 				return web.st.ReleaseOrder(entity, uint(orderId))
 			case "cancel":
-				return web.st.CancelOrder(entity, uint(orderId), btOrders)
+				return web.st.CancelOrder(entity, uint(orderId), orders)
 			default:
 				return nil
 			}
