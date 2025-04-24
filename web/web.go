@@ -167,22 +167,23 @@ func (web *Web) startRedisMonitor() {
 	}()
 }
 
-func (web *Web) checkCookies(c *gin.Context) {
-	onNotExist := map[string]struct{}{
+var (
+	onNotExist = map[string]struct{}{
 		"/metrics": {}, "/login": {},
 		"/do_login": {}, "/register": {},
 		"/order-items": {}, "/styles/style.css": {},
 	}
+	onExist = []string{
+		"/login", "/do_login", "/register",
+	}
+)
 
+func (web *Web) checkCookies(c *gin.Context) {
 	exist := web.dataCookiesExists(c)
 	if _, ok := onNotExist[c.Request.URL.Path]; !exist && !ok {
 		c.Redirect(http.StatusSeeOther, "/login")
 		c.Abort()
 		return
-	}
-
-	onExist := []string{
-		"/login", "/do_login", "/register",
 	}
 
 	if exist {
