@@ -13,7 +13,7 @@ import (
 func (web *Web) dataCookiesExists(c *gin.Context) bool {
 	sessionDataCookie, err := c.Cookie("session_data")
 
-	return err != nil && sessionDataCookie != ""
+	return err == nil && sessionDataCookie != ""
 }
 
 func (web *Web) addSession(sessionKey string) {
@@ -25,6 +25,7 @@ func (web *Web) addSession(sessionKey string) {
 
 func (web *Web) deleteSession(sessionKey string, c *gin.Context) {
 	c.SetCookie("session_id", "", -1, "/", "", false, true)
+	c.SetCookie("session_data", "", -1, "/", "", false, true)
 
 	if web.rdbPresent.Load() {
 		web.rdb.Del(web.ctx, sessionKey)

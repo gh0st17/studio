@@ -168,25 +168,31 @@ func (web *Web) startRedisMonitor() {
 }
 
 func (web *Web) checkCookies(c *gin.Context) {
-	if !web.dataCookiesExists(c) &&
-		c.Request.URL.Path != "/metrics" &&
-		c.Request.URL.Path != "/login" &&
-		c.Request.URL.Path != "/do_login" &&
-		c.Request.URL.Path != "/register" &&
-		c.Request.URL.Path != "/order-items" &&
-		c.Request.URL.Path != "/styles/style.css" {
+	onNotExist := map[string]struct{}{
+		"/metrics": {}, "/login": {},
+		"/do_login": {}, "/register": {},
+		"/order-items": {}, "/styles/style.css": {},
+	}
+
+	exist := web.dataCookiesExists(c)
+	if _, ok := onNotExist[c.Request.URL.Path]; !exist && !ok {
 		c.Redirect(http.StatusSeeOther, "/login")
 		c.Abort()
 		return
 	}
 
-	if web.dataCookiesExists(c) &&
-		(c.Request.URL.Path == "/login" ||
-			c.Request.URL.Path == "/do_login" ||
-			c.Request.URL.Path == "/register") {
-		c.Redirect(http.StatusSeeOther, "/")
-		c.Abort()
-		return
+	onExist := []string{
+		"/login", "/do_login", "/register",
+	}
+
+	if exist {
+		for _, path := range onExist {
+			if c.Request.URL.Path == path {
+				c.Redirect(http.StatusSeeOther, "/")
+				c.Abort()
+				return
+			}
+		}
 	}
 
 	c.Next()
