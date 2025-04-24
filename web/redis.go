@@ -24,12 +24,12 @@ func saveToRedis[T any](web *Web, key string, data []T) error {
 }
 
 func loadFromRedis[T any](web *Web, key string) ([]T, error) {
-	val, err := web.rdb.Get(web.ctx, key).Result()
+	val, err := web.rdb.Get(web.ctx, key).Bytes()
 	if err != nil {
 		return nil, err
 	}
 	var out []T
-	err = msgpack.Unmarshal([]byte(val), &out)
+	err = msgpack.Unmarshal(val, &out)
 	if err != nil {
 		return nil, err
 	}

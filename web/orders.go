@@ -41,8 +41,8 @@ func loadOrders(web *Web, entity bt.Entity) []bt.Order {
 }
 
 func (web *Web) loadOrderItems(orderId uint, c *gin.Context) (orderItems []bt.OrderItem) {
-	entity := web.loadEntity(c)
-	key := fmt.Sprintf("orderItems:%d:%d", entity.GetId(), orderId)
+	user := web.userFromCookies(c)
+	key := fmt.Sprintf("orderItems:%d:%d", user.GetId(), orderId)
 
 	var err error
 
@@ -53,9 +53,9 @@ func (web *Web) loadOrderItems(orderId uint, c *gin.Context) (orderItems []bt.Or
 		}
 	}
 
-	orders := loadOrders(web, entity)
+	orders := loadOrders(web, user)
 
-	orderItems, err = web.st.OrderItems(entity, uint(orderId), orders)
+	orderItems, err = web.st.OrderItems(user, uint(orderId), orders)
 	if err != nil {
 		log.Println("load orders items error:", err)
 		return nil

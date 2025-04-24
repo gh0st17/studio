@@ -1,97 +1,61 @@
 package web
 
 import (
-	"fmt"
+	"bytes"
 	"log"
-	"strconv"
 	"time"
 
-	bt "github.com/gh0st17/studio/basic_types"
+	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/gin-gonic/gin"
 )
 
-func (web *Web) allCookiesExists(c *gin.Context) bool {
-	l, _ := c.Cookie("login")
-	s, _ := c.Cookie("session_id")
-	return l != "" && s != ""
+func (web *Web) dataCookiesExists(c *gin.Context) bool {
+	sessionDataCookie, err := c.Cookie("session_data")
+
+	return err != nil && sessionDataCookie != ""
 }
 
-func (web *Web) addSession(entity bt.Entity, sessionKey string) {
-	err := web.rdb.HSet(web.ctx, sessionKey, map[string]interface{}{
-		"id":           fmt.Sprint(entity.GetId()),
-		"login":        entity.GetLogin(),
-		"fullname":     entity.FullName(),
-		"access_level": uint(entity.AccessLevel()),
-	}).Err()
+func (web *Web) addSession(sessionKey string) {
+	err := web.rdb.Set(web.ctx, sessionKey, "", 24*time.Hour).Err()
 	if err != nil {
-		log.Println("add from cookies error:", err)
-	}
-	err = web.rdb.Expire(web.ctx, sessionKey, 24*time.Hour).Err()
-	if err != nil {
-		log.Println("set expire error:", err)
+		log.Println("session add error:", err)
 	}
 }
 
-func (web *Web) entityFromCookies(c *gin.Context) (entity bt.Entity) {
-	if web.allCookiesExists(c) {
-		loginCookie, _ := c.Cookie("login")
-		entity, _ := web.st.Login(loginCookie)
-		return entity
-	}
+func (web *Web) deleteSession(sessionKey string, c *gin.Context) {
+	c.SetCookie("session_id", "", -1, "/", "", false, true)
 
-	return entity
-}
-
-func (web *Web) entityFromRedis(c *gin.Context) (entity bt.Entity) {
-	if web.allCookiesExists(c) {
-		var (
-			result map[string]string
-			err    error
-		)
-
-		sessionCookie, _ := c.Cookie("session_id")
-		sessionKey := "session:" + sessionCookie
-
-		result, err = web.rdb.HGetAll(web.ctx, sessionKey).Result()
-		if err != nil {
-			log.Println("reading redis error:", err)
-		}
-
-		if len(result) == 0 {
-			entity = web.entityFromCookies(c)
-			go web.addSession(entity, sessionKey)
-
-			return entity
-		}
-
-		id, err := strconv.Atoi(result["id"])
-		if err != nil {
-			log.Println("invalid id in session:", err)
-			return nil
-		}
-
-		accessLevel, err := strconv.Atoi(result["access_level"])
-		if err != nil {
-			log.Println("invalid access level:", err)
-			return nil
-		}
-
-		entity = &User{
-			Id:           uint(id),
-			Login:        result["login"],
-			UserFullName: result["fullname"],
-			AccLevel:     bt.AccessLevel(accessLevel),
-		}
-	}
-
-	return entity
-}
-
-func (web *Web) loadEntity(c *gin.Context) bt.Entity {
 	if web.rdbPresent.Load() {
-		return web.entityFromRedis(c)
-	} else {
-		return web.entityFromCookies(c)
+		web.rdb.Del(web.ctx, sessionKey)
 	}
+}
+
+func (web *Web) sessionExists(c *gin.Context) bool {
+	if web.rdbPresent.Load() {
+		sessionCookie, _ := c.Cookie("session_id")
+		if sessionCookie == "" {
+			return false
+		}
+
+		sessionKey := "session:" + sessionCookie
+		if web.rdb.Exists(web.ctx, sessionKey).Val() == 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func (web *Web) userFromCookies(c *gin.Context) *User {
+	sessionDataCookie, _ := c.Cookie("session_data")
+	buf := bytes.NewBufferString(sessionDataCookie)
+
+	user := &User{}
+	err := msgpack.Unmarshal(buf.Bytes(), user)
+	if err != nil {
+		sidCookie, _ := c.Cookie("seesion_id")
+		web.deleteSession(sidCookie, c)
+	}
+
+	return user
 }

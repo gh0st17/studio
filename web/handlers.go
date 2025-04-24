@@ -34,26 +34,23 @@ func (web *Web) registerHandler(c *gin.Context) {
 func (web *Web) mainHandler(c *gin.Context) {
 	if c.Request.Method == http.MethodPost {
 		action := c.PostForm("action")
-		sessionCookie, _ := c.Cookie("session_id")
 		switch action {
 		case "Создать заказ":
 			c.Redirect(http.StatusSeeOther, "/create-order")
 		case "Просмотреть заказы":
 			c.Redirect(http.StatusSeeOther, "/orders")
 		case "Выход":
-			if web.rdbPresent.Load() {
-				web.rdb.Del(web.ctx, "session:"+sessionCookie)
-			}
-			c.SetCookie("session_id", "", -1, "/", "", false, true)
+			sidCookie, _ := c.Cookie("session_id")
+			web.deleteSession(sidCookie, c)
 			c.Redirect(http.StatusSeeOther, "/login")
 		}
 		return
 	}
 
-	entity := web.loadEntity(c)
-
 	var opt []string
-	if entity.AccessLevel() == bt.CUSTOMER {
+
+	user := web.userFromCookies(c)
+	if user.AccLevel == bt.CUSTOMER {
 		opt = customerOptions()
 	} else {
 		opt = operatorOptions()
@@ -63,7 +60,7 @@ func (web *Web) mainHandler(c *gin.Context) {
 		UserName  string
 		MenuItems []string
 	}{
-		UserName:  entity.FullName(),
+		UserName:  user.UserFullName,
 		MenuItems: opt,
 	}
 
@@ -71,7 +68,12 @@ func (web *Web) mainHandler(c *gin.Context) {
 }
 
 func (web *Web) ordersHandler(c *gin.Context) {
-	entity := web.loadEntity(c)
+	if !web.sessionExists(c) {
+		web.alert(c, http.StatusServiceUnavailable, "Сервис временно недоступен")
+		return
+	}
+
+	user := web.userFromCookies(c)
 	if c.Request.Method == http.MethodPost {
 		actionForm := c.PostForm("action")
 		orderIdForm := c.PostForm("order_id")
@@ -84,7 +86,7 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		)
 
 		if customerIdForm == "" {
-			customerId = uint64(entity.GetId())
+			customerId = uint64(user.Id)
 		} else {
 			customerId, err = strconv.ParseUint(customerIdForm, 10, 32)
 			if err != nil {
@@ -99,15 +101,15 @@ func (web *Web) ordersHandler(c *gin.Context) {
 			return
 		}
 
-		orders := loadOrders(web, entity)
+		orders := loadOrders(web, user)
 		err = func() error {
 			switch actionForm {
 			case "process":
-				return web.st.ProcessOrder(entity, uint(orderId))
+				return web.st.ProcessOrder(user, uint(orderId))
 			case "release":
-				return web.st.ReleaseOrder(entity, uint(orderId))
+				return web.st.ReleaseOrder(user, uint(orderId))
 			case "cancel":
-				return web.st.CancelOrder(entity, uint(orderId), orders)
+				return web.st.CancelOrder(user, uint(orderId), orders)
 			default:
 				return nil
 			}
@@ -122,13 +124,13 @@ func (web *Web) ordersHandler(c *gin.Context) {
 		invalidateOrdersCache(web, uint(customerId))
 	}
 
-	orders := loadOrders(web, entity)
+	orders := loadOrders(web, user)
 	if len(orders) == 0 {
 		web.alert(c, http.StatusOK, emptyOrders)
 		return
 	}
 
-	if entity.AccessLevel() == bt.CUSTOMER {
+	if user.AccessLevel() == bt.CUSTOMER {
 		c.HTML(http.StatusOK, "orders.html", gin.H{"Orders": orders})
 	} else {
 		c.HTML(http.StatusOK, "orders-operator.html", gin.H{"Orders": orders})
@@ -136,47 +138,54 @@ func (web *Web) ordersHandler(c *gin.Context) {
 }
 
 func (web *Web) orderItemsHandler(c *gin.Context) {
-	if c.Request.Method == http.MethodGet {
-		orderIdGet := c.Query("id")
-
-		if orderIdGet == "" {
-			web.alert(c, http.StatusBadRequest, missingOrderID)
-			return
-		}
-
-		orderId, err := strconv.ParseUint(orderIdGet, 10, 32)
-		if err != nil {
-			web.alert(c, http.StatusBadRequest, wrongOrderID)
-			return
-		}
-
-		orderItems := web.loadOrderItems(uint(orderId), c)
-		if orderItems == nil {
-			web.alert(c, http.StatusInternalServerError, errLoadOrderItems)
-			return
-		}
-
-		var totalPrice float64
-		for _, item := range orderItems {
-			totalPrice += item.UnitPrice
-		}
-
-		c.HTML(http.StatusOK, "order-items.html", gin.H{
-			"OrderItems": orderItems,
-			"TotalPrice": totalPrice,
-		})
-	} else {
-		c.Redirect(http.StatusSeeOther, "/")
+	if !web.sessionExists(c) {
+		web.alert(c, http.StatusServiceUnavailable, "Сервис временно недоступен")
+		return
 	}
+
+	orderIdGet := c.Query("id")
+
+	if orderIdGet == "" {
+		web.alert(c, http.StatusBadRequest, missingOrderID)
+		return
+	}
+
+	orderId, err := strconv.ParseUint(orderIdGet, 10, 32)
+	if err != nil {
+		web.alert(c, http.StatusBadRequest, wrongOrderID)
+		return
+	}
+
+	orderItems := web.loadOrderItems(uint(orderId), c)
+	if orderItems == nil {
+		web.alert(c, http.StatusInternalServerError, errLoadOrderItems)
+		return
+	}
+
+	var totalPrice float64
+	for _, item := range orderItems {
+		totalPrice += item.UnitPrice
+	}
+
+	c.HTML(http.StatusOK, "order-items.html", gin.H{
+		"OrderItems": orderItems,
+		"TotalPrice": totalPrice,
+	})
 }
 
 func (web *Web) createOrderHandler(c *gin.Context) {
-	entity := web.loadEntity(c)
-	if entity.AccessLevel() == bt.OPERATOR {
+	user := web.userFromCookies(c)
+
+	if user.AccLevel == bt.OPERATOR {
 		c.Redirect(http.StatusSeeOther, "/")
 	}
 
 	if c.Request.Method == http.MethodPost {
+		if !web.sessionExists(c) {
+			web.alert(c, http.StatusServiceUnavailable, "Сервис временно недоступен")
+			return
+		}
+
 		if err := c.Request.ParseForm(); err != nil {
 			web.alert(c, http.StatusBadRequest, err.Error())
 			log.Println("create order parsing error:", err)
@@ -191,7 +200,7 @@ func (web *Web) createOrderHandler(c *gin.Context) {
 			}
 		}
 
-		err := web.st.CreateOrder(entity, modelIds)
+		err := web.st.CreateOrder(user, modelIds)
 		if err != nil {
 			web.alert(c, http.StatusBadRequest, err.Error())
 			log.Println("create order error:", err)

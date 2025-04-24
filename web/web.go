@@ -168,18 +168,19 @@ func (web *Web) startRedisMonitor() {
 }
 
 func (web *Web) checkCookies(c *gin.Context) {
-	if !web.allCookiesExists(c) &&
+	if !web.dataCookiesExists(c) &&
 		c.Request.URL.Path != "/metrics" &&
 		c.Request.URL.Path != "/login" &&
 		c.Request.URL.Path != "/do_login" &&
 		c.Request.URL.Path != "/register" &&
+		c.Request.URL.Path != "/order-items" &&
 		c.Request.URL.Path != "/styles/style.css" {
 		c.Redirect(http.StatusSeeOther, "/login")
 		c.Abort()
 		return
 	}
 
-	if web.allCookiesExists(c) &&
+	if web.dataCookiesExists(c) &&
 		(c.Request.URL.Path == "/login" ||
 			c.Request.URL.Path == "/do_login" ||
 			c.Request.URL.Path == "/register") {

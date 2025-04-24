@@ -4,8 +4,10 @@ import (
 	"log"
 	"net/http"
 
+	bt "github.com/gh0st17/studio/basic_types"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 func (web *Web) loginHandler(c *gin.Context) {
@@ -25,6 +27,17 @@ func (web *Web) doLoginHandler(c *gin.Context) {
 			return
 		}
 
+		const expTime int = 3600 * 24
+		sessionID := uuid.New().String()
+
+		if web.rdbPresent.Load() {
+			web.addSession("session:" + sessionID)
+		} else {
+			web.alert(c, http.StatusServiceUnavailable, "Сервис временно недоступен")
+			c.Abort()
+			return
+		}
+
 		login := c.PostForm("login")
 		entity, err := web.st.Login(login)
 		if entity == nil || err != nil {
@@ -33,14 +46,24 @@ func (web *Web) doLoginHandler(c *gin.Context) {
 			return
 		}
 
-		sessionID := uuid.New().String()
-
-		if web.rdbPresent.Load() {
-			web.addSession(entity, "session:"+sessionID)
+		id := func() uint {
+			if entity.AccessLevel() == bt.CUSTOMER {
+				return entity.GetId()
+			} else {
+				return 0
+			}
 		}
 
-		c.SetCookie("session_id", sessionID, 3600*24, "/", "", false, true)
-		c.SetCookie("login", login, 0, "/", "", false, true)
+		user := &User{
+			Id:           id(),
+			Login:        login,
+			AccLevel:     entity.AccessLevel(),
+			UserFullName: entity.FullName(),
+		}
+		value, _ := msgpack.Marshal(user)
+
+		c.SetCookie("session_id", sessionID, expTime, "/", "", false, true)
+		c.SetCookie("session_data", string(value), expTime, "/", "", false, true)
 		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}

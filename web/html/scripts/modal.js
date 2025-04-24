@@ -45,7 +45,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Fetch данных о составе модели
       fetch(`/${url}?id=${id}`)
-        .then(response => response.ok ? response.text() : Promise.reject('Ошибка загрузки'))
+        .then(response => response.ok ?
+          response.text() : response.status == 503 ?
+          '<h2>Сервис временно не доступен</h2>' : 
+            Promise.reject('<h2>Ошибка загрузки</h2>'))
         .then(html => modalBody.innerHTML = html)
         .catch(error => modalBody.innerHTML = `<p style="color: red;">${error}</p>`);
     });
