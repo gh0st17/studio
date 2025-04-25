@@ -4,11 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const tbody = table.querySelector('tbody');
 
   window.addEventListener('DOMContentLoaded', () => {
-    const sortIndex = parseInt(localStorage.getItem('sortIndex'));
-    const ascending = localStorage.getItem('ascending');
+    const index = parseInt(localStorage.getItem('index'));
+    const ascending = localStorage.getItem('ascending') == 'true';
   
-    if (!isNaN(sortIndex) && !isNaN(ascending)) {
-      sortTableByColumn(sortIndex, ascending);
+    if (!isNaN(index) && !isNaN(ascending)) {
+      sortTableByColumn(index, ascending);
     } else {
       sortTableByColumn(0, true);
     }
@@ -67,9 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     rows.forEach(row => tbody.appendChild(row));
-    updateHeaderArrows(index, ascending);
-    localStorage.setItem('sortIndex', index);
+    localStorage.setItem('index', index);
     localStorage.setItem('ascending', ascending);
+    updateHeaderArrows(index, ascending);
   }
 
   // Обработчики кликов по заголовкам
