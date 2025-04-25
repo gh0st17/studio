@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"sync/atomic"
+	"time"
 
 	bt "github.com/gh0st17/studio/basic_types"
 	"github.com/gh0st17/studio/studio"
@@ -66,6 +67,7 @@ func New(pgSqlSocket, redisSocket, httpSocket string) (web *Web, err error) {
 
 	prometheus.MustRegister(httpRequestsTotal)
 	prometheus.MustRegister(httpRequestDuration)
+	prometheus.MustRegister(serverErrors)
 
 	return web, nil
 }
@@ -82,6 +84,8 @@ func (web *Web) Run() error {
 			log.Fatal("Server Close:", err)
 		}
 	}()
+
+	web.startRedisMonitor()
 
 	if err := web.srv.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
@@ -101,15 +105,16 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 
 	// Загрузка шаблонов
 	router.FuncMap = template.FuncMap{
-		"inc": inc,
-		"eq":  eq,
+		"inc":     inc,
+		"eq":      eq,
+		"timeStr": timeToStr,
 	}
 	router.LoadHTMLGlob(TEMPLATES_PATH + "*.html")
 
 	router.Use(
 		web.checkCookies,
-		web.isRedisPresent,
-		metricsMiddleware(),
+		requestsMetric,
+		serverErrorsMetric,
 	)
 
 	// Маршруты
@@ -141,25 +146,54 @@ func (web *Web) initHttp(webSocket string) *http.Server {
 	}
 }
 
+func (web *Web) startRedisMonitor() {
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if _, err := web.rdb.Ping(web.ctx).Result(); err != nil {
+					log.Printf("Redis is offline: %v", err)
+					web.rdbPresent.Store(false)
+				} else {
+					web.rdbPresent.Store(true)
+				}
+			case <-web.ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+var (
+	onNotExist = map[string]struct{}{
+		"/metrics": {}, "/login": {},
+		"/do_login": {}, "/register": {},
+		"/order-items": {}, "/styles/style.css": {},
+	}
+	onExist = []string{
+		"/login", "/do_login", "/register",
+	}
+)
+
 func (web *Web) checkCookies(c *gin.Context) {
-	if !web.allCookiesExists(c) &&
-		c.Request.URL.Path != "/metrics" &&
-		c.Request.URL.Path != "/login" &&
-		c.Request.URL.Path != "/do_login" &&
-		c.Request.URL.Path != "/register" &&
-		c.Request.URL.Path != "/styles/style.css" {
+	exist := web.dataCookiesExists(c)
+	if _, ok := onNotExist[c.Request.URL.Path]; !exist && !ok {
 		c.Redirect(http.StatusSeeOther, "/login")
 		c.Abort()
 		return
 	}
 
-	if web.allCookiesExists(c) &&
-		(c.Request.URL.Path == "/login" ||
-			c.Request.URL.Path == "/do_login" ||
-			c.Request.URL.Path == "/register") {
-		c.Redirect(http.StatusSeeOther, "/")
-		c.Abort()
-		return
+	if exist {
+		for _, path := range onExist {
+			if c.Request.URL.Path == path {
+				c.Redirect(http.StatusSeeOther, "/")
+				c.Abort()
+				return
+			}
+		}
 	}
 
 	c.Next()
@@ -175,6 +209,14 @@ func inc(a int) int {
 
 func eq(a bt.OrderStatus, b uint) bool {
 	return uint(a) == b
+}
+
+func timeToStr(t time.Time) string {
+	if t.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		return "---"
+	} else {
+		return t.Format(bt.DateFormat)
+	}
 }
 
 func customerOptions() []string {

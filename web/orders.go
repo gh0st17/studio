@@ -3,77 +3,67 @@ package web
 import (
 	"fmt"
 	"log"
-	"net/http"
-	"time"
 
 	bt "github.com/gh0st17/studio/basic_types"
 
 	"github.com/gin-gonic/gin"
 )
 
-type Order struct {
-	bt.Order
-	CreateDate  string
-	ReleaseDate string
-}
-
-func loadOrders(web *Web, entity bt.Entity, present bool, c *gin.Context) []Order {
+func loadOrders(web *Web, entity bt.Entity) []bt.Order {
 	var (
-		orders []Order
+		orders []bt.Order
 		key    string = "orders:0"
+		err    error
 	)
 
 	if entity.AccessLevel() == bt.CUSTOMER {
 		key = "orders:" + fmt.Sprint(entity.GetId())
 	}
 
-	if present {
-		var err error
-		orders, err = loadFromRedis[Order](web, key)
+	if web.rdbPresent.Load() {
+		orders, err = loadFromRedis[bt.Order](web, key)
 		if err == nil {
 			return orders
 		}
 	}
 
-	rawOrders, err := web.st.Orders(entity)
+	orders, err = web.st.Orders(entity)
 	if err != nil {
-		web.alert(c, http.StatusInternalServerError, err.Error())
-		log.Println("orders error:", err)
+		log.Println("load orders error:", err)
 		return nil
 	}
-	orders = transformOrders(rawOrders)
 
-	if present {
+	if len(orders) > 0 && web.rdbPresent.Load() {
 		go saveToRedis(web, key, orders)
-	}
-
-	if len(orders) == 0 {
-		web.alert(c, http.StatusOK, emptyOrders)
-		return nil
 	}
 
 	return orders
 }
 
-func transformOrders(rawOrders []bt.Order) []Order {
-	var orders []Order
-	for _, rawO := range rawOrders {
-		releaseDate := func() string {
-			if rawO.ReleaseDate.Equal(time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)) {
-				return "---"
-			} else {
-				return rawO.ReleaseDate.Format(bt.DateFormat)
-			}
-		}()
+func (web *Web) loadOrderItems(orderId uint, c *gin.Context) (orderItems []bt.OrderItem) {
+	user := web.userFromCookies(c)
+	key := fmt.Sprintf("orderItems:%d:%d", user.GetId(), orderId)
 
-		o := Order{
-			Order:       rawO,
-			CreateDate:  rawO.CreateDate.Format(bt.DateFormat),
-			ReleaseDate: releaseDate,
+	var err error
+
+	if web.rdbPresent.Load() && redisArrayExists(web, key) {
+		orderItems, err = loadFromRedis[bt.OrderItem](web, key)
+		if err == nil {
+			return orderItems
 		}
-
-		orders = append(orders, o)
 	}
 
-	return orders
+	orders := loadOrders(web, user)
+
+	orderItems, err = web.st.OrderItems(user, uint(orderId), orders)
+	if err != nil {
+		log.Println("load orders items error:", err)
+		return nil
+	}
+
+	if web.rdbPresent.Load() {
+		go saveToRedis(web, key, orderItems)
+	}
+
+	return orderItems
 }

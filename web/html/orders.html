@@ -5,53 +5,63 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Список заказов</title>
   <link href="/styles/style.css" rel="stylesheet" type="text/css">
+  <link href="/styles/modal.css" rel="stylesheet" type="text/css">
+  <script src="/scripts/modal.js"></script>
+  <script src="/scripts/sorttable.js"></script>
 </head>
 <body>
   <div class="content-table">
   <h2>Список заказов</h2>
     <div class="order-table">
-    <table>
-      <thead>
-        <tr>
-          <th>Номер заказа</th>
-          <th>Статус</th>
-          <th>Общая стоимость</th>
-          <th>Дата создания</th>
-          <th>Дата выдачи</th>
-          <th>Действие</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{ range .Orders }}
+      <table id="sort-table">
+        <thead>
           <tr>
-            <td><a href="/order-items?id={{ .Id }}">{{ .Id }}</a></td>
-            <td>
-              {{ if eq .Status 1 }}
-              ⏳ <!-- ожидание -->
-              {{ else if eq .Status 4 }}
-              ❌ <!-- отменено -->
-              {{ else if eq .Status 3 }}
-              ✅ <!-- выпущено -->
-              {{ else }}
-              🔄 <!-- обработка -->
-              {{ end }}
-              {{ .Status }}
-            </td>
-            <td>{{ .TotalPrice }}</td>
-            <td>{{ .CreateDate }}</td>
-            <td>{{ .ReleaseDate }}</td>
-            <td>
-              <form method="post">
-                <input type="hidden" name="order_id" value="{{ .Id }}">
-                <button type="submit"
-                {{ if not (eq .Status 1) }}disabled{{ end }}
-                name="action" value="cancel">Отменить</button>
-              </form>
-            </td>
+            <th data-index="0">Номер заказа</th>
+            <th data-index="1">Статус</th>
+            <th data-index="2">Общая стоимость</th>
+            <th data-index="3">Дата создания</th>
+            <th data-index="4">Дата выдачи</th>
+            <th data-index="5">Действие</th>
           </tr>
-        {{ end }}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {{ range .Orders }}
+            <tr class="item-tr" data-url="order-items" data-id="{{ .Id }}">
+              <td>{{ .Id }}</td>
+              <td>
+                {{ if eq .Status 1 }}
+                ⏳ <!-- ожидание -->
+                {{ else if eq .Status 4 }}
+                ❌ <!-- отменено -->
+                {{ else if eq .Status 3 }}
+                ✅ <!-- выпущено -->
+                {{ else }}
+                🔄 <!-- обработка -->
+                {{ end }}
+                {{ .Status }}
+              </td>
+              <td>{{ .TotalPrice }}</td>
+              <td>{{ timeStr .CreateDate }}</td>
+              <td>{{ timeStr .ReleaseDate }}</td>
+              <td>
+                <form method="post">
+                  <input type="hidden" name="order_id" value="{{ .Id }}">
+                  <button type="submit"
+                  {{ if not (eq .Status 1) }}disabled{{ end }}
+                  name="action" value="cancel">Отменить</button>
+                </form>
+              </td>
+            </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      <div id="modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h2 id="modal-header">Заказ №</h2>
+          <div id="modal-body">Загрузка...</div>
+        </div>
+      </div>
     </div>
   </div>
   <center>

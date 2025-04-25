@@ -32,13 +32,14 @@ func PromptUint(prompt string) (nums []uint, err error) {
 	var u64 uint64
 
 	numsStr := strings.Split(PromptString(prompt), " ")
-	for _, numStr := range numsStr {
+	nums = make([]uint, len(numsStr))
+	for i, numStr := range numsStr {
 		if numStr == "" {
 			continue
 		}
 
 		if u64, err = strconv.ParseUint(numStr, 10, 0); err == nil {
-			nums = append(nums, uint(u64))
+			nums[i] = uint(u64)
 		}
 	}
 

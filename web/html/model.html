@@ -1,21 +1,21 @@
-  <p><strong>{{ .Title }}</strong> (Артикул: {{ .Id }})</p>
-  <table>
-    <thead>
+<p><strong>{{ .Title }}</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Материал</th>
+      <th>Цена за метр</th>
+      <th>Длина (метры)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{$M := .}}
+    {{ range $matId, $mat := .Materials }}
       <tr>
-        <th>Материал</th>
-        <th>Цена за метр</th>
-        <th>Длина (метры)</th>
+        <td>{{ $mat.Title }}</td>
+        <td>{{ $mat.Price }}</td>
+        <td>{{ index $M.MatLeng $matId }}</td> 
       </tr>
-    </thead>
-    <tbody>
-      {{$M := .}}
-      {{ range $matId, $mat := .Materials }}
-        <tr>
-          <td>{{ $mat.Title }}</td>
-          <td>{{ $mat.Price }}</td>
-          <td>{{ index $M.MatLeng $matId }}</td> 
-        </tr>
-      {{ end }}
-    </tbody>
-  </table>
-  <p><strong>Стоимость изготовления: {{ .Price }}</strong></p>
+    {{ end }}
+  </tbody>
+</table>
+<p style="margin-bottom:0;"><strong>Стоимость изготовления: {{ .Price }}</strong></p>

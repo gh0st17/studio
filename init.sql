@@ -5,7 +5,7 @@
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 17.4
 
--- Started on 2025-04-18 23:31:28 MSK
+-- Started on 2025-04-22 10:22:29 MSK
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -574,6 +574,9 @@ INSERT INTO studio.order_items VALUES (26, 12, 16, 2400);
 INSERT INTO studio.order_items VALUES (7, 13, 2, 4000);
 INSERT INTO studio.order_items VALUES (8, 13, 12, 2500);
 INSERT INTO studio.order_items VALUES (9, 13, 13, 1200);
+INSERT INTO studio.order_items VALUES (27, 14, 5, 2000);
+INSERT INTO studio.order_items VALUES (28, 14, 12, 2500);
+INSERT INTO studio.order_items VALUES (29, 15, 11, 44000);
 
 
 --
@@ -598,12 +601,14 @@ INSERT INTO studio.orders VALUES (2, 2, NULL, 4, '2025-03-25 22:06:55+03', NULL)
 INSERT INTO studio.orders VALUES (3, 2, 1, 2, '2025-03-25 22:12:42+03', NULL);
 INSERT INTO studio.orders VALUES (9, 4, NULL, 4, '2025-04-12 02:11:14+03', NULL);
 INSERT INTO studio.orders VALUES (12, 2, NULL, 1, '2025-04-13 22:52:31+03', NULL);
-INSERT INTO studio.orders VALUES (13, 1, 1, 2, '2025-04-14 23:10:59+03', NULL);
 INSERT INTO studio.orders VALUES (11, 4, 1, 2, '2025-04-12 20:28:14+03', NULL);
 INSERT INTO studio.orders VALUES (1, 1, 1, 3, '2025-03-12 19:52:29+03', '2025-03-27 22:55:38+03');
 INSERT INTO studio.orders VALUES (7, 3, 1, 3, '2025-04-12 00:45:06+03', '2025-04-12 01:53:56+03');
 INSERT INTO studio.orders VALUES (8, 4, 1, 3, '2025-04-12 01:54:20+03', '2025-04-12 02:10:41+03');
 INSERT INTO studio.orders VALUES (10, 3, 1, 3, '2025-04-12 14:20:50+03', '2025-04-12 14:23:09+03');
+INSERT INTO studio.orders VALUES (14, 4, 1, 2, '2025-04-19 16:48:46.235362+03', NULL);
+INSERT INTO studio.orders VALUES (15, 2, NULL, 1, '2025-04-20 00:41:47.042173+03', NULL);
+INSERT INTO studio.orders VALUES (13, 1, 1, 3, '2025-04-14 23:10:59+03', '2025-04-20 00:44:16.09385+03');
 
 
 --
@@ -672,7 +677,7 @@ SELECT pg_catalog.setval('studio.models_id_seq', 17, true);
 -- Name: order_items_id_seq; Type: SEQUENCE SET; Schema: studio; Owner: -
 --
 
-SELECT pg_catalog.setval('studio.order_items_id_seq', 26, true);
+SELECT pg_catalog.setval('studio.order_items_id_seq', 29, true);
 
 
 --
@@ -690,7 +695,7 @@ SELECT pg_catalog.setval('studio.order_status_id_seq', 4, true);
 -- Name: orders_id_seq; Type: SEQUENCE SET; Schema: studio; Owner: -
 --
 
-SELECT pg_catalog.setval('studio.orders_id_seq', 13, true);
+SELECT pg_catalog.setval('studio.orders_id_seq', 15, true);
 
 
 --
@@ -933,7 +938,7 @@ ALTER TABLE ONLY studio.orders
     ADD CONSTRAINT orders_status_fkey FOREIGN KEY (status) REFERENCES studio.order_status(id);
 
 
--- Completed on 2025-04-18 23:31:28 MSK
+-- Completed on 2025-04-22 10:22:29 MSK
 
 --
 -- PostgreSQL database dump complete

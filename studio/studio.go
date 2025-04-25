@@ -51,9 +51,9 @@ func (s *Studio) CreateOrder(ent bt.Entity, ids []uint) error {
 		return errtype.ErrRuntime(ErrEmptyCart)
 	}
 
-	var cartModels []bt.Model
-	for _, id := range ids {
-		cartModels = append(cartModels, s.models[id])
+	cartModels := make([]bt.Model, len(ids))
+	for i, id := range ids {
+		cartModels[i] = s.models[id]
 	}
 
 	err := s.sDB.CreateOrder(ent.GetId(), cartModels)
@@ -78,8 +78,8 @@ func (s *Studio) Orders(ent bt.Entity) ([]bt.Order, error) {
 	}
 }
 
-func (s *Studio) OrderItems(ent bt.Entity, id uint) ([]bt.OrderItem, error) {
-	if ok, err := s.checkOrder(ent, id); err != nil {
+func (s *Studio) OrderItems(ent bt.Entity, id uint, orders []bt.Order) ([]bt.OrderItem, error) {
+	if ok, err := s.checkOrder(id, orders); err != nil {
 		return nil, err
 	} else if ok {
 		return s.sDB.FetchOrderItems(id, s.models)
@@ -88,8 +88,8 @@ func (s *Studio) OrderItems(ent bt.Entity, id uint) ([]bt.OrderItem, error) {
 	}
 }
 
-func (s *Studio) CancelOrder(ent bt.Entity, id uint) error {
-	if ok, err := s.checkOrder(ent, id); err != nil {
+func (s *Studio) CancelOrder(ent bt.Entity, id uint, orders []bt.Order) error {
+	if ok, err := s.checkOrder(id, orders); err != nil {
 		return err
 	} else if !ok {
 		return ErrPerm
@@ -141,12 +141,7 @@ func (s *Studio) initTables() (err error) {
 	return nil
 }
 
-func (s *Studio) checkOrder(ent bt.Entity, id uint) (bool, error) {
-	orders, err := s.Orders(ent)
-	if err != nil {
-		return false, err
-	}
-
+func (s *Studio) checkOrder(id uint, orders []bt.Order) (bool, error) {
 	for _, o := range orders {
 		if o.Id == id {
 			return true, nil
