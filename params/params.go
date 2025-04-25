@@ -36,7 +36,7 @@ type Params struct {
 func printHelp() {
 	program := filepath.Base(os.Args[0])
 
-	fmt.Println("Использование: ", program, useExample)
+	fmt.Println("Использование:", program, useExample)
 	fmt.Printf("\nФлаги:\n")
 
 	flag.PrintDefaults()

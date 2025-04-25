@@ -3,7 +3,7 @@ package params
 // Строки для справки
 const (
 	versionDesc = "Печать номера версии и выход"
-	versionText = "studio 1.0.0\n" +
+	versionText = "studio 1.0.2\n" +
 		"Copyright (C) 2025\n" +
 		"Лицензия MIT: THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY\n" +
 		"OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO\n" +
@@ -17,7 +17,7 @@ const (
 		"Нет НИКАКИХ ГАРАНТИЙ в пределах действующего законодательства.\n\n" +
 		"Автор: Alexey Sorokin.\n"
 
-	useExample = "--type <тип интерфейса>"
+	useExample = "[--type <тип интерфейса>]"
 
 	interfaceTypeDesc = "Тип интерфейса: CLI, Web"
 	httpSocDesc       = "Сокет для веб-сервера"
